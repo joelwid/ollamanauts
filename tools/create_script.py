@@ -1,17 +1,37 @@
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "agent_scripts"
 
 
-def create_script(filename: str, content: str, overwrite: bool = False) -> dict[str, str]:
-    """Create a Python script in the agent_scripts directory.
+def _indent_block(text: str, spaces: int = 4) -> str:
+    stripped = text.strip()
+    if not stripped:
+        return " " * spaces + "pass"
+    return textwrap.indent(stripped, " " * spaces)
+
+
+def create_script(
+    filename: str,
+    imports: str,
+    run_body: str,
+    parse_args_body: str,
+    params_expression: str,
+    module_docstring: str = "",
+    overwrite: bool = False,
+) -> dict[str, str]:
+    """Create a Python script from the standard agent template.
 
     Args:
         filename: Name of the Python file to create, such as hello.py.
-        content: Full Python source code to write into the file.
+        imports: Import statements to place at the top of the script.
+        run_body: Body of the run(params) function.
+        parse_args_body: Statements in the __main__ block before params assignment.
+        params_expression: Python expression assigned to params in the __main__ block.
+        module_docstring: Optional module docstring placed after imports.
         overwrite: Whether to replace an existing file with the same name.
 
     Returns:
@@ -29,6 +49,22 @@ def create_script(filename: str, content: str, overwrite: bool = False) -> dict[
     existed = target.exists()
     if existed and not overwrite:
         raise FileExistsError(f"Script already exists: {filename}")
+
+    imports_block = imports.strip()
+    docstring_block = ""
+    if module_docstring.strip():
+        docstring_block = f'\n\n"""{module_docstring.strip()}"""'
+
+    content = (
+        f"{imports_block}"
+        f"{docstring_block}\n\n"
+        "def run(params):\n"
+        f"{_indent_block(run_body)}\n\n\n"
+        'if __name__ == "__main__":\n'
+        f"{_indent_block(parse_args_body)}\n"
+        f"    params = {params_expression.strip()}\n"
+        "    run(params)\n"
+    )
 
     SCRIPTS_DIR.mkdir(exist_ok=True)
     target.write_text(content, encoding="utf-8")
