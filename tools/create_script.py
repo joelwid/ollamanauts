@@ -17,6 +17,7 @@ def _indent_block(text: str, spaces: int = 4) -> str:
 def create_script(
     filename: str,
     imports: str,
+    constants: str,
     run_body: str,
     parse_args_body: str,
     params_expression: str,
@@ -28,6 +29,7 @@ def create_script(
     Args:
         filename: Name of the Python file to create, such as hello.py.
         imports: Import statements to place at the top of the script.
+        constants: Module-level constant definitions placed after imports.
         run_body: Body of the run(params) function.
         parse_args_body: Statements in the __main__ block before params assignment.
         params_expression: Python expression assigned to params in the __main__ block.
@@ -51,13 +53,25 @@ def create_script(
         raise FileExistsError(f"Script already exists: {filename}")
 
     imports_block = imports.strip()
+    constants_block = constants.strip()
     docstring_block = ""
     if module_docstring.strip():
-        docstring_block = f'\n\n"""{module_docstring.strip()}"""'
+        docstring_block = f'"""{module_docstring.strip()}"""'
+
+    sections = []
+    if imports_block:
+        sections.append(imports_block)
+    if constants_block:
+        sections.append(constants_block)
+    if docstring_block:
+        sections.append(docstring_block)
+
+    header = "\n\n".join(sections)
+    if header:
+        header = f"{header}\n\n"
 
     content = (
-        f"{imports_block}"
-        f"{docstring_block}\n\n"
+        f"{header}"
         "def run(params):\n"
         f"{_indent_block(run_body)}\n\n\n"
         'if __name__ == "__main__":\n'

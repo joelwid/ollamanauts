@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Python agent project"
 requires-python = ">=3.13"
 dependencies = [
+    "beautifulsoup4",
     "numpy",
     "ollama",
     "pandas",
