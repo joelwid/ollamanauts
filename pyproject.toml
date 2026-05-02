@@ -1,0 +1,14 @@
+[project]
+name = "python-agent"
+version = "0.1.0"
+description = "Python agent project"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy",
+    "ollama",
+    "pandas",
+    "requests",
+]
+
+[tool.uv]
+package = false
