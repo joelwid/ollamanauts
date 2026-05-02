@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import textwrap
 from pathlib import Path
 
@@ -7,8 +8,42 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "agent_scripts"
 
 
+def _trim_blank_lines(lines: list[str]) -> list[str]:
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return lines
+
+
+def _line_indent(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def _normalize_block(text: str) -> str:
+    lines = _trim_blank_lines(text.splitlines())
+    if not lines:
+        return ""
+
+    lines = [line.rstrip() for line in lines]
+    first_line = lines[0].lstrip()
+    remaining = lines[1:]
+
+    non_empty_remaining = [line for line in remaining if line.strip()]
+    if non_empty_remaining:
+        minimum_remaining_indent = min(_line_indent(line) for line in non_empty_remaining)
+        if minimum_remaining_indent > 0:
+            remaining = [
+                line[minimum_remaining_indent:] if line.strip() else ""
+                for line in remaining
+            ]
+
+    normalized = [first_line, *remaining]
+    return "\n".join(normalized)
+
+
 def _indent_block(text: str, spaces: int = 4) -> str:
-    stripped = text.strip()
+    stripped = _normalize_block(text)
     if not stripped:
         return " " * spaces + "pass"
     return textwrap.indent(stripped, " " * spaces)
@@ -79,6 +114,11 @@ def create_script(
         f"    params = {params_expression.strip()}\n"
         "    run(params)\n"
     )
+
+    try:
+        ast.parse(content)
+    except SyntaxError as exc:
+        raise ValueError(f"Generated script is invalid Python: {exc}") from exc
 
     SCRIPTS_DIR.mkdir(exist_ok=True)
     target.write_text(content, encoding="utf-8")

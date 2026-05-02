@@ -16,8 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a terminal Ollama agent.")
     parser.add_argument(
         "--model",
-        default=os.environ.get("OLLAMA_MODEL", "gemma4:latest"),
-        help="Ollama model name. Defaults to $OLLAMA_MODEL or gemma4:latest.",
+        default=os.environ.get("OLLAMA_MODEL", "gemma4:31b"),
+        help="Ollama model name. Defaults to $OLLAMA_MODEL or gemma4:31b.",
     )
     return parser.parse_args()
 
