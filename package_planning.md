@@ -1,4 +1,4 @@
-# Python Package Migration Plan
+# Ollamanauts Package Migration Plan
 
 Goal: make this repository importable as a Python package so users can create a configured agent with a small public API, while still keeping the terminal app available.
 
@@ -7,7 +7,7 @@ Goal: make this repository importable as a Python package so users can create a 
 Target import shape:
 
 ```python
-from python_agent import Agent
+from ollamanauts import Agent
 
 agent = Agent(
     model="gemma4:31b",
@@ -21,8 +21,8 @@ print(reply)
 The package should also support advanced configuration:
 
 ```python
-from python_agent import Agent
-from python_agent.tools import DEFAULT_TOOLS
+from ollamanauts import Agent
+from ollamanauts.tools import DEFAULT_TOOLS
 
 agent = Agent(
     model="gemma4:31b",
@@ -38,7 +38,7 @@ agent = Agent(
 Move the importable code out of repo-root modules and into a package directory:
 
 ```text
-python_agent/
+ollamanauts/
   __init__.py
   agent.py
   tool_orchestrator.py
@@ -58,10 +58,10 @@ python_agent/
 Keep `main.py` as a thin development entry point, or move it to:
 
 ```text
-python_agent/cli.py
+ollamanauts/cli.py
 ```
 
-Recommended: move CLI logic to `python_agent/cli.py` and leave root `main.py` as a small compatibility wrapper if needed.
+Recommended: move CLI logic to `ollamanauts/cli.py` and leave root `main.py` as a small compatibility wrapper if needed.
 
 ## 2. Define a Public Agent Class
 
@@ -143,10 +143,10 @@ Use `importlib.resources`:
 from importlib.resources import files
 
 def load_prompt(filename: str) -> str:
-    return files("python_agent.prompts").joinpath(filename).read_text(encoding="utf-8")
+    return files("ollamanauts.prompts").joinpath(filename).read_text(encoding="utf-8")
 ```
 
-Add `__init__.py` to `python_agent/prompts/` or configure package data so `.md` files are included.
+Add `__init__.py` to `ollamanauts/prompts/` or configure package data so `.md` files are included.
 
 ## 5. Make Script Storage Configurable
 
@@ -179,7 +179,7 @@ The package should expose both:
 Example:
 
 ```python
-from python_agent.tools import make_default_tools
+from ollamanauts.tools import make_default_tools
 
 tools = make_default_tools(script_dir="./agent_scripts")
 ```
@@ -195,7 +195,7 @@ Subagent deployment should be added separately by the top-level `Agent` when `en
 
 ## 7. Update Imports to Package-Relative Imports
 
-Once files move under `python_agent/`, update imports like:
+Once files move under `ollamanauts/`, update imports like:
 
 ```python
 from tool_orchestrator import ToolOrchestrator
@@ -207,7 +207,7 @@ to:
 from .tool_orchestrator import ToolOrchestrator
 ```
 
-Inside `python_agent/tools/`, use:
+Inside `ollamanauts/tools/`, use:
 
 ```python
 from ..agent import SubAgent
@@ -237,10 +237,10 @@ Add package data for prompts:
 
 ```toml
 [tool.hatch.build.targets.wheel]
-packages = ["python_agent"]
+packages = ["ollamanauts"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"python_agent/prompts" = "python_agent/prompts"
+"ollamanauts/prompts" = "ollamanauts/prompts"
 ```
 
 Or use Hatch's package-data configuration if preferred.
@@ -251,20 +251,20 @@ Expose the terminal app as an installed command:
 
 ```toml
 [project.scripts]
-python-agent = "python_agent.cli:main"
+ollamanauts = "ollamanauts.cli:main"
 ```
 
 Then users can run:
 
 ```bash
-python-agent --model gemma4:31b
+ollamanauts --model gemma4:31b
 ```
 
 The CLI should instantiate `InteractiveAgent` or the package-level `Agent` with terminal callbacks.
 
 ## 10. Expose a Stable Public API
 
-Create `python_agent/__init__.py`:
+Create `ollamanauts/__init__.py`:
 
 ```python
 from .agent import Agent
@@ -304,10 +304,10 @@ Mock `ollama.chat` for agent loop tests so tests do not require a running Ollama
 
 Recommended implementation order:
 
-1. Create `python_agent/` package directory and move modules.
+1. Create `ollamanauts/` package directory and move modules.
 2. Convert imports to package-relative imports.
-3. Move CLI code into `python_agent/cli.py`.
-4. Add `python_agent/__init__.py`.
+3. Move CLI code into `ollamanauts/cli.py`.
+4. Add `ollamanauts/__init__.py`.
 5. Replace prompt loading with `importlib.resources`.
 6. Add package-level `Agent` convenience class.
 7. Convert script tools to factories that accept `script_dir`.
@@ -319,7 +319,7 @@ Recommended implementation order:
 
 ## 13. Open Design Decisions
 
-- Package name: keep `python-agent` as the distribution name, but use `python_agent` as the import name.
+- Package name: use `Ollamanauts` as the project name and `ollamanauts` as the import name.
 - Prompt customization: support both full replacement and appended instructions.
 - Default script directory: use `Path.cwd() / "agent_scripts"` unless the user provides `script_dir`.
 - Public class name: expose `Agent` as the ergonomic default and keep `InteractiveAgent` for CLI-specific usage.
