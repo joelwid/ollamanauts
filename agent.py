@@ -15,7 +15,7 @@ SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
 
 
 @dataclass
-class Agent:
+class InteractiveAgent:
     model: str
     orchestrator: ToolOrchestrator
     think_mode: bool | str | None = "medium"

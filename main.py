@@ -5,7 +5,7 @@ import os
 
 import ollama
 
-from agent import Agent
+from agent import InteractiveAgent
 from terminal_output import finish_thinking
 from terminal_output import print_help
 from terminal_output import print_thinking_chunk
@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     think_mode = None if args.think == "off" else args.think
-    agent = Agent(
+    agent = InteractiveAgent(
         model=args.model,
         orchestrator=ToolOrchestrator(DEFAULT_TOOLS),
         think_mode=think_mode,
