@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "Ollamanauts"
 version = "0.1.0"
-description = "Composable Ollama agents with safe defaults"
+description = "Composable Ollama agents"
 requires-python = ">=3.13"
 dependencies = [
     "ollama",
