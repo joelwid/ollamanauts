@@ -20,9 +20,6 @@ package = true
 [tool.hatch.build.targets.wheel]
 packages = ["ollamanauts"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"ollamanauts/prompts" = "ollamanauts/prompts"
-
 [tool.hatch.build.targets.sdist]
 include = [
     "/ollamanauts",
