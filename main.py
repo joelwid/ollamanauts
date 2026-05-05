@@ -12,6 +12,7 @@ from terminal_output import print_thinking_chunk
 from terminal_output import print_tool_result
 from tool_orchestrator import ToolOrchestrator
 from tools import DEFAULT_TOOLS
+from tools import make_deploy_research_agent_tool
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,9 +34,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     think_mode = None if args.think == "off" else args.think
+    tools = [
+        *DEFAULT_TOOLS,
+        make_deploy_research_agent_tool(model=args.model, think_mode=think_mode),
+    ]
     agent = InteractiveAgent(
         model=args.model,
-        orchestrator=ToolOrchestrator(DEFAULT_TOOLS),
+        orchestrator=ToolOrchestrator(tools),
         think_mode=think_mode,
     )
 
