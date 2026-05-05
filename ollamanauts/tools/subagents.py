@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from agent import SubAgent
-from tool_orchestrator import ToolOrchestrator
-from tool_orchestrator import ToolResult
+from ..agent import SubAgent
+from ..tool_orchestrator import ToolOrchestrator
+from ..tool_orchestrator import ToolResult
 
 
 SUBAGENT_TOOLS: list[Callable[..., object]] = []

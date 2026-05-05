@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
+from importlib.resources import files
 from typing import Any
 
 import ollama
 
-from tool_orchestrator import ToolOrchestrator
-from tool_orchestrator import ToolResult
-
-PROMPTS_DIR = Path(__file__).with_name("prompts")
+from .tool_orchestrator import ToolOrchestrator
+from .tool_orchestrator import ToolResult
 
 
 def load_prompt(filename: str) -> str:
-    return (PROMPTS_DIR / filename).read_text(encoding="utf-8")
+    return files("ollamanauts.prompts").joinpath(filename).read_text(encoding="utf-8")
 
 
 INTERACTIVE_AGENT_PROMPT = load_prompt("interactive_agent.md")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tool_orchestrator import ToolResult
+from .tool_orchestrator import ToolResult
 
 
 def print_help() -> None:
