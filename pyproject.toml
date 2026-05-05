@@ -11,6 +11,9 @@ dependencies = [
     "ollama",
 ]
 
+[project.scripts]
+ollamanauts = "ollamanauts.cli:main"
+
 [tool.uv]
 package = true
 
