@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from typing import Any
+
+from agent import SubAgent
+from tool_orchestrator import ToolOrchestrator
+
+from .create_script import create_script
+from .execute_script import execute_script
+from .list_scripts import list_scripts
+from .read_script import read_script
+
+
+RESEARCH_TOOLS = [
+    create_script,
+    execute_script,
+    list_scripts,
+    read_script,
+]
+
+
+def make_deploy_research_agent_tool(
+    *,
+    model: str,
+    think_mode: bool | str | None,
+    tools: Sequence[Callable[..., Any]] = RESEARCH_TOOLS,
+) -> Callable[[str], str]:
+    def deploy_research_agent(task: str) -> str:
+        """Deploy a non-interactive research subagent for a focused task.
+
+        Args:
+            task: A clear, self-contained research task for the subagent.
+
+        Returns:
+            The subagent's concise research report.
+        """
+        stripped_task = task.strip()
+        if not stripped_task:
+            raise ValueError("task must not be empty")
+
+        agent = SubAgent(
+            model=model,
+            orchestrator=ToolOrchestrator(tools),
+            think_mode=think_mode,
+        )
+        return agent.run(stripped_task)
+
+    return deploy_research_agent
