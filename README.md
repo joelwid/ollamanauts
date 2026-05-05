@@ -79,15 +79,20 @@ agent = Agent(
 print(agent.run("Introduce yourself and describe your capabilities."))
 ```
 
-## Example Implementation
+## Example Implementations
 
-A concrete example lives in [examples/customer_agent.py](/Users/Joel/repos/ollamanauts/examples/customer_agent.py).
+Concrete examples live in:
 
-It shows how to:
+- [examples/customer_agent.py](/Users/Joel/repos/ollamanauts/examples/customer_agent.py)
+- [examples/customer_cli.py](/Users/Joel/repos/ollamanauts/examples/customer_cli.py)
+- [examples/customer_tools.py](/Users/Joel/repos/ollamanauts/examples/customer_tools.py)
+
+Together they show how to:
 
 - register explicit tools
 - keep the agent constrained to a narrow domain
 - run a package-style agent without the terminal CLI
+- run an interactive terminal loop with the same tools loaded
 
 Example:
 
@@ -135,6 +140,14 @@ response = agent.run(
 
 print(response)
 ```
+
+Interactive example:
+
+```bash
+python -m examples.customer_cli --model gemma4:31b --think medium
+```
+
+That example reuses the customer tools from `examples/customer_tools.py` and runs an `InteractiveAgent` with the same `/help`, `/tools`, `/clear`, and `/exit` commands as the built-in terminal interface.
 
 ## Public API
 
@@ -249,6 +262,12 @@ Or from the repository root:
 python main.py --model gemma4:31b --think medium
 ```
 
+Customer-support interactive example:
+
+```bash
+python -m examples.customer_cli --model gemma4:31b --think medium
+```
+
 CLI commands:
 
 - `/help` shows command help
@@ -257,6 +276,8 @@ CLI commands:
 - `/exit` quits
 
 The CLI uses `InteractiveAgent` and prints tool activity plus thinking output through helpers in [ollamanauts/terminal_output.py](/Users/Joel/repos/ollamanauts/ollamanauts/terminal_output.py).
+
+If you want interactive mode with your own tools, see [examples/customer_cli.py](/Users/Joel/repos/ollamanauts/examples/customer_cli.py). The built-in `ollamanauts` CLI does not currently load external tools from imports or config.
 
 ## Prompt Behavior
 
@@ -297,6 +318,8 @@ ollamanauts/
     subagents.py
 examples/
   customer_agent.py
+  customer_cli.py
+  customer_tools.py
 tests/
   test_package_behavior.py
 main.py
