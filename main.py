@@ -7,7 +7,12 @@ import ollama
 
 from agent import InteractiveAgent
 from terminal_output import finish_thinking
+from terminal_output import finish_subagent_thinking
 from terminal_output import print_help
+from terminal_output import print_subagent_result
+from terminal_output import print_subagent_start
+from terminal_output import print_subagent_thinking_chunk
+from terminal_output import print_subagent_tool_result
 from terminal_output import print_thinking_chunk
 from terminal_output import print_tool_result
 from tool_orchestrator import ToolOrchestrator
@@ -36,7 +41,15 @@ def main() -> None:
     think_mode = None if args.think == "off" else args.think
     tools = [
         *DEFAULT_TOOLS,
-        make_deploy_subagent_tool(model=args.model, think_mode=think_mode),
+        make_deploy_subagent_tool(
+            model=args.model,
+            think_mode=think_mode,
+            on_start=print_subagent_start,
+            on_tool_result=print_subagent_tool_result,
+            on_thinking_chunk=print_subagent_thinking_chunk,
+            on_thinking_end=finish_subagent_thinking,
+            on_result=print_subagent_result,
+        ),
     ]
     agent = InteractiveAgent(
         model=args.model,

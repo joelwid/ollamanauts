@@ -133,5 +133,16 @@ class InteractiveAgent(BaseAgent):
 class SubAgent(BaseAgent):
     system_prompt: str = SUBAGENT_PROMPT
 
-    def run(self, task: str) -> str:
-        return self.run_turn(task)
+    def run(
+        self,
+        task: str,
+        on_tool_result: Callable[[ToolResult], None] | None = None,
+        on_thinking_chunk: Callable[[str], None] | None = None,
+        on_thinking_end: Callable[[], None] | None = None,
+    ) -> str:
+        return self.run_turn(
+            task,
+            on_tool_result=on_tool_result,
+            on_thinking_chunk=on_thinking_chunk,
+            on_thinking_end=on_thinking_end,
+        )
