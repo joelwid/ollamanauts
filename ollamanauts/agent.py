@@ -162,6 +162,20 @@ class SubAgent(BaseAgent):
 
 
 class Agent:
+    """Package-friendly Ollama agent with safe defaults.
+
+    Args:
+        model: Ollama model name to use for chat completions.
+        system_prompt: Full replacement system prompt. When provided, it replaces
+            the agent's entire default system prompt instead of appending to it.
+        extra_instructions: Additional instructions appended to the default
+            system prompt. Ignored when `system_prompt` is provided.
+        think_mode: Thinking mode passed through to Ollama.
+        tools: Explicit user-supplied tools to register.
+        enable_subagents: When true, register only the `deploy_subagent` tool in
+            addition to any explicit `tools`.
+    """
+
     def __init__(
         self,
         *,
