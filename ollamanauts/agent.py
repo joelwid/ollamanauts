@@ -172,9 +172,10 @@ class Agent:
         tools: Sequence[Callable[..., Any]] | None = None,
         enable_subagents: bool = True,
     ) -> None:
+        from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
 
-        configured_tools = list(tools or [])
+        configured_tools = [*DEFAULT_TOOLS, *(tools or ())]
         if enable_subagents:
             configured_tools.append(
                 make_deploy_subagent_tool(

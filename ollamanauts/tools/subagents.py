@@ -8,7 +8,7 @@ from ..tool_orchestrator import ToolOrchestrator
 from ..tool_orchestrator import ToolResult
 
 
-SUBAGENT_TOOLS: list[Callable[..., object]] = []
+SUBAGENT_TOOLS: tuple[Callable[..., object], ...] = ()
 
 
 def make_deploy_subagent_tool(
