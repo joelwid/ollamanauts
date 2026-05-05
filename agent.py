@@ -10,16 +10,23 @@ import ollama
 from tool_orchestrator import ToolOrchestrator
 from tool_orchestrator import ToolResult
 
-SYSTEM_PROMPT_PATH = Path(__file__).with_name("system_prompt.md")
-SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+PROMPTS_DIR = Path(__file__).with_name("prompts")
+
+
+def load_prompt(filename: str) -> str:
+    return (PROMPTS_DIR / filename).read_text(encoding="utf-8")
+
+
+INTERACTIVE_AGENT_PROMPT = load_prompt("interactive_agent.md")
+RESEARCH_SUBAGENT_PROMPT = load_prompt("research_subagent.md")
 
 
 @dataclass
-class InteractiveAgent:
+class BaseAgent:
     model: str
     orchestrator: ToolOrchestrator
     think_mode: bool | str | None = "medium"
-    system_prompt: str = SYSTEM_PROMPT
+    system_prompt: str = ""
     messages: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -115,3 +122,16 @@ class InteractiveAgent:
 
     def describe_tools(self) -> list[str]:
         return self.orchestrator.tool_names()
+
+
+@dataclass
+class InteractiveAgent(BaseAgent):
+    system_prompt: str = INTERACTIVE_AGENT_PROMPT
+
+
+@dataclass
+class SubAgent(BaseAgent):
+    system_prompt: str = RESEARCH_SUBAGENT_PROMPT
+
+    def run(self, task: str) -> str:
+        return self.run_turn(task)
