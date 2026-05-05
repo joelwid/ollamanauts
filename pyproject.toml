@@ -3,20 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "python-agent"
+name = "Ollamanauts"
 version = "0.1.0"
-description = "Python agent project"
+description = "Composable Ollama agents with safe defaults"
 requires-python = ">=3.13"
 dependencies = [
-    "beautifulsoup4",
-    "numpy",
     "ollama",
-    "pandas",
-    "requests",
 ]
 
 [tool.uv]
-package = false
+package = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["ollamanauts"]
