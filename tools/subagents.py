@@ -12,7 +12,7 @@ from .list_scripts import list_scripts
 from .read_script import read_script
 
 
-RESEARCH_TOOLS = [
+SUBAGENT_TOOLS = [
     create_script,
     execute_script,
     list_scripts,
@@ -20,20 +20,20 @@ RESEARCH_TOOLS = [
 ]
 
 
-def make_deploy_research_agent_tool(
+def make_deploy_subagent_tool(
     *,
     model: str,
     think_mode: bool | str | None,
-    tools: Sequence[Callable[..., Any]] = RESEARCH_TOOLS,
+    tools: Sequence[Callable[..., Any]] = SUBAGENT_TOOLS,
 ) -> Callable[[str], str]:
-    def deploy_research_agent(task: str) -> str:
-        """Deploy a non-interactive research subagent for a focused task.
+    def deploy_subagent(task: str) -> str:
+        """Deploy a non-interactive subagent for a focused task.
 
         Args:
-            task: A clear, self-contained research task for the subagent.
+            task: A clear, self-contained task for the subagent.
 
         Returns:
-            The subagent's concise research report.
+            The subagent's concise result.
         """
         stripped_task = task.strip()
         if not stripped_task:
@@ -46,4 +46,4 @@ def make_deploy_research_agent_tool(
         )
         return agent.run(stripped_task)
 
-    return deploy_research_agent
+    return deploy_subagent

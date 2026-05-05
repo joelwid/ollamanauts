@@ -23,8 +23,8 @@ Required workflow:
 - Sixth, call execute_script when you need the script to perform work or confirm behavior.
 
 Delegation:
-- You can deploy a research subagent for focused background work.
-- Delegate only when a focused research task would help answer the user's request.
+- You can deploy a subagent for focused background work.
+- Delegate only when a focused task would help answer the user's request.
 - Give the subagent a clear, self-contained task.
 - Use the subagent result as supporting context; you remain responsible for the final answer to the user.
 

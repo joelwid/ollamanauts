@@ -18,7 +18,7 @@ def load_prompt(filename: str) -> str:
 
 
 INTERACTIVE_AGENT_PROMPT = load_prompt("interactive_agent.md")
-RESEARCH_SUBAGENT_PROMPT = load_prompt("research_subagent.md")
+SUBAGENT_PROMPT = load_prompt("subagent.md")
 
 
 @dataclass
@@ -131,7 +131,7 @@ class InteractiveAgent(BaseAgent):
 
 @dataclass
 class SubAgent(BaseAgent):
-    system_prompt: str = RESEARCH_SUBAGENT_PROMPT
+    system_prompt: str = SUBAGENT_PROMPT
 
     def run(self, task: str) -> str:
         return self.run_turn(task)
