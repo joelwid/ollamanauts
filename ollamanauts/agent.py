@@ -208,7 +208,7 @@ class Agent:
             system prompt. Ignored when `system_prompt` is provided.
         think_mode: Thinking mode passed through to Ollama.
         tools: Explicit user-supplied tools to register.
-        verbose: Enables verbose runtime output hooks (reserved for future use).
+        verbose: Enables terminal runtime output for thinking/tool/subagent events.
         enable_subagents: When true, register only the `deploy_subagent` tool in
             addition to any explicit `tools`.
     """

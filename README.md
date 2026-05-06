@@ -164,7 +164,7 @@ agent = Agent(
     extra_instructions="Always answer in JSON.",
     think_mode="medium",
     tools=[],
-    verbose=False,
+    verbose=True,
     enable_subagents=True,
 )
 ```

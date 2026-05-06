@@ -90,6 +90,37 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNotNone(kwargs["on_thinking_end"])
         self.assertIsNotNone(kwargs["on_result"])
 
+    def test_verbose_false_keeps_callbacks_unset(self) -> None:
+        from ollamanauts import Agent
+
+        with patch("ollamanauts.agent.BaseAgent") as mock_base_agent:
+            base_agent_instance = mock_base_agent.return_value
+            base_agent_instance.run_turn.return_value = "ok"
+
+            agent = Agent(enable_subagents=False, verbose=False)
+            result = agent.run("hello")
+
+        self.assertEqual(result, "ok")
+        self.assertFalse(agent._verbose)
+        run_kwargs = base_agent_instance.run_turn.call_args.kwargs
+        self.assertIsNone(run_kwargs["on_tool_result"])
+        self.assertIsNone(run_kwargs["on_thinking_chunk"])
+        self.assertIsNone(run_kwargs["on_thinking_end"])
+
+    def test_verbose_false_subagent_hooks_are_unset(self) -> None:
+        from ollamanauts import Agent
+
+        fake_deploy_tool = lambda task: task
+        with patch("ollamanauts.tools.make_deploy_subagent_tool", return_value=fake_deploy_tool) as mock_make:
+            Agent(verbose=False, enable_subagents=True)
+
+        kwargs = mock_make.call_args.kwargs
+        self.assertIsNone(kwargs["on_start"])
+        self.assertIsNone(kwargs["on_tool_result"])
+        self.assertIsNone(kwargs["on_thinking_chunk"])
+        self.assertIsNone(kwargs["on_thinking_end"])
+        self.assertIsNone(kwargs["on_result"])
+
 
 if __name__ == "__main__":
     unittest.main()
