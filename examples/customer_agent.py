@@ -12,6 +12,7 @@ if __name__ == "__main__":
             " and plan questions. If data is missing, say so plainly."
         ),
         tools=[lookup_customer, explain_plan],
+        verbose=True,
         enable_subagents=False,
     )
     response = agent.run(
