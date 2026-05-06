@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Any
+from typing import TypeVar
 
 import ollama
 
@@ -20,6 +21,9 @@ INTERACTIVE_AGENT_PROMPT = load_prompt("interactive_agent.md")
 SUBAGENT_PROMPT = load_prompt("subagent.md")
 
 
+T = TypeVar("T")
+
+
 def _compose_system_prompt(
     *,
     system_prompt: str | None,
@@ -32,6 +36,38 @@ def _compose_system_prompt(
         return INTERACTIVE_AGENT_PROMPT
 
     return f"{INTERACTIVE_AGENT_PROMPT}\n\nAdditional user instructions:\n{extra_instructions.strip()}"
+
+
+def _fanout_callbacks(
+    first: Callable[[T], None] | None,
+    second: Callable[[T], None] | None,
+) -> Callable[[T], None] | None:
+    if first is None:
+        return second
+    if second is None:
+        return first
+
+    def combined(value: T) -> None:
+        first(value)
+        second(value)
+
+    return combined
+
+
+def _fanout_done_callbacks(
+    first: Callable[[], None] | None,
+    second: Callable[[], None] | None,
+) -> Callable[[], None] | None:
+    if first is None:
+        return second
+    if second is None:
+        return first
+
+    def combined() -> None:
+        first()
+        second()
+
+    return combined
 
 
 @dataclass
@@ -172,6 +208,7 @@ class Agent:
             system prompt. Ignored when `system_prompt` is provided.
         think_mode: Thinking mode passed through to Ollama.
         tools: Explicit user-supplied tools to register.
+        verbose: Enables verbose runtime output hooks (reserved for future use).
         enable_subagents: When true, register only the `deploy_subagent` tool in
             addition to any explicit `tools`.
     """
@@ -184,17 +221,45 @@ class Agent:
         extra_instructions: str | None = None,
         think_mode: bool | str | None = "medium",
         tools: Sequence[Callable[..., Any]] | None = None,
+        verbose: bool = False,
         enable_subagents: bool = True,
     ) -> None:
         from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
+        from .verbose_output import VerbosePrinter
 
+        self._verbose_printer: VerbosePrinter | None = VerbosePrinter() if verbose else None
         configured_tools = [*DEFAULT_TOOLS, *(tools or ())]
         if enable_subagents:
             configured_tools.append(
                 make_deploy_subagent_tool(
                     model=model,
                     think_mode=think_mode,
+                    on_start=(
+                        self._verbose_printer.on_subagent_start
+                        if self._verbose_printer is not None
+                        else None
+                    ),
+                    on_tool_result=(
+                        self._verbose_printer.on_subagent_tool_result
+                        if self._verbose_printer is not None
+                        else None
+                    ),
+                    on_thinking_chunk=(
+                        self._verbose_printer.on_subagent_thinking_chunk
+                        if self._verbose_printer is not None
+                        else None
+                    ),
+                    on_thinking_end=(
+                        self._verbose_printer.on_subagent_thinking_end
+                        if self._verbose_printer is not None
+                        else None
+                    ),
+                    on_result=(
+                        self._verbose_printer.on_subagent_result
+                        if self._verbose_printer is not None
+                        else None
+                    ),
                 )
             )
 
@@ -207,6 +272,7 @@ class Agent:
                 extra_instructions=extra_instructions,
             ),
         )
+        self._verbose = verbose
 
     def run(
         self,
@@ -216,11 +282,23 @@ class Agent:
         on_thinking_chunk: Callable[[str], None] | None = None,
         on_thinking_end: Callable[[], None] | None = None,
     ) -> str:
+        combined_tool_result = _fanout_callbacks(
+            on_tool_result,
+            self._verbose_printer.on_tool_result if self._verbose_printer is not None else None,
+        )
+        combined_thinking_chunk = _fanout_callbacks(
+            on_thinking_chunk,
+            self._verbose_printer.on_thinking_chunk if self._verbose_printer is not None else None,
+        )
+        combined_thinking_end = _fanout_done_callbacks(
+            on_thinking_end,
+            self._verbose_printer.on_thinking_end if self._verbose_printer is not None else None,
+        )
         return self._agent.run_turn(
             prompt,
-            on_tool_result=on_tool_result,
-            on_thinking_chunk=on_thinking_chunk,
-            on_thinking_end=on_thinking_end,
+            on_tool_result=combined_tool_result,
+            on_thinking_chunk=combined_thinking_chunk,
+            on_thinking_end=combined_thinking_end,
         )
 
     def reset(self) -> None:
