@@ -164,6 +164,7 @@ agent = Agent(
     extra_instructions="Always answer in JSON.",
     think_mode="medium",
     tools=[],
+    verbose=True,
     enable_subagents=True,
 )
 ```
@@ -175,6 +176,7 @@ Constructor arguments:
 - `extra_instructions`: appended to the default interactive prompt when `system_prompt` is not provided
 - `think_mode`: forwarded to `ollama.chat`; defaults to `"medium"`
 - `tools`: explicit user-supplied Python callables exposed as tools
+- `verbose`: when `True`, prints runtime events (thinking/tool/subagent activity) to the terminal
 - `enable_subagents`: when `True`, registers `deploy_subagent`
 
 Methods:
@@ -182,6 +184,27 @@ Methods:
 - `run(prompt, *, on_tool_result=None, on_thinking_chunk=None, on_thinking_end=None) -> str`
 - `reset() -> None`
 - `describe_tools() -> list[str]`
+
+### Verbose runtime output
+
+Use `verbose=True` to emit runtime traces while using the package `Agent` API:
+
+```python
+from ollamanauts import Agent
+
+agent = Agent(
+    model="gemma4:31b",
+    verbose=True,
+)
+
+reply = agent.run("Investigate this issue and summarize next steps.")
+```
+
+With verbose mode enabled, the terminal output includes:
+
+- tool call results (`[ok]` / `[error]`)
+- model thinking stream markers (`[thinking] ... [end thinking]`)
+- subagent lifecycle traces when subagents are used (`[subagent]`, subagent thinking/tool traces, and `[subagent result]`)
 
 ### `BaseAgent`, `InteractiveAgent`, and `SubAgent`
 
