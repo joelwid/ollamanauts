@@ -208,6 +208,8 @@ class Agent:
             system prompt. Ignored when `system_prompt` is provided.
         think_mode: Thinking mode passed through to Ollama.
         tools: Explicit user-supplied tools to register.
+        subagent_tools: Optional explicit tools made available to subagents.
+            Defaults to the same non-subagent tools available to this agent.
         verbose: Enables terminal runtime output for thinking/tool/subagent events.
         enable_subagents: When true, register only the `deploy_subagent` tool in
             addition to any explicit `tools`.
@@ -221,6 +223,7 @@ class Agent:
         extra_instructions: str | None = None,
         think_mode: bool | str | None = "medium",
         tools: Sequence[Callable[..., Any]] | None = None,
+        subagent_tools: Sequence[Callable[..., Any]] | None = None,
         verbose: bool = False,
         enable_subagents: bool = True,
     ) -> None:
@@ -229,12 +232,15 @@ class Agent:
         from .verbose_output import VerbosePrinter
 
         self._verbose_printer: VerbosePrinter | None = VerbosePrinter() if verbose else None
-        configured_tools = [*DEFAULT_TOOLS, *(tools or ())]
+        base_tools = [*DEFAULT_TOOLS, *(tools or ())]
+        configured_subagent_tools = [*base_tools] if subagent_tools is None else [*subagent_tools]
+        configured_tools = [*base_tools]
         if enable_subagents:
             configured_tools.append(
                 make_deploy_subagent_tool(
                     model=model,
                     think_mode=think_mode,
+                    tools=configured_subagent_tools,
                     on_start=(
                         self._verbose_printer.on_subagent_start
                         if self._verbose_printer is not None

@@ -90,6 +90,41 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNotNone(kwargs["on_thinking_end"])
         self.assertIsNotNone(kwargs["on_result"])
 
+
+    def test_subagent_tools_default_to_agent_tools(self) -> None:
+        from ollamanauts import Agent
+
+        def lookup_customer(customer_id: str) -> dict[str, str]:
+            return {"id": customer_id}
+
+        fake_deploy_tool = lambda task: task
+        with patch("ollamanauts.tools.make_deploy_subagent_tool", return_value=fake_deploy_tool) as mock_make:
+            Agent(tools=[lookup_customer], verbose=False, enable_subagents=True)
+
+        kwargs = mock_make.call_args.kwargs
+        self.assertEqual(kwargs["tools"], [lookup_customer])
+
+    def test_subagent_tools_can_be_overridden(self) -> None:
+        from ollamanauts import Agent
+
+        def lookup_customer(customer_id: str) -> dict[str, str]:
+            return {"id": customer_id}
+
+        def escalate_ticket(ticket_id: str) -> dict[str, str]:
+            return {"ticket": ticket_id}
+
+        fake_deploy_tool = lambda task: task
+        with patch("ollamanauts.tools.make_deploy_subagent_tool", return_value=fake_deploy_tool) as mock_make:
+            Agent(
+                tools=[lookup_customer],
+                subagent_tools=[escalate_ticket],
+                verbose=False,
+                enable_subagents=True,
+            )
+
+        kwargs = mock_make.call_args.kwargs
+        self.assertEqual(kwargs["tools"], [escalate_ticket])
+
     def test_verbose_false_keeps_callbacks_unset(self) -> None:
         from ollamanauts import Agent
 

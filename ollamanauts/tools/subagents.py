@@ -11,6 +11,10 @@ from ..tool_orchestrator import ToolResult
 SUBAGENT_TOOLS: tuple[Callable[..., object], ...] = ()
 
 
+def _filter_nested_subagent_tool(tools: Sequence[Callable[..., Any]]) -> list[Callable[..., Any]]:
+    return [tool for tool in tools if getattr(tool, "__name__", "") != "deploy_subagent"]
+
+
 def make_deploy_subagent_tool(
     *,
     model: str,
@@ -22,6 +26,8 @@ def make_deploy_subagent_tool(
     on_thinking_end: Callable[[], None] | None = None,
     on_result: Callable[[str], None] | None = None,
 ) -> Callable[[str], str]:
+    filtered_tools = _filter_nested_subagent_tool(tools)
+
     def deploy_subagent(task: str) -> str:
         """Deploy a non-interactive subagent for a focused task.
 
@@ -40,7 +46,7 @@ def make_deploy_subagent_tool(
 
         agent = SubAgent(
             model=model,
-            orchestrator=ToolOrchestrator(tools),
+            orchestrator=ToolOrchestrator(filtered_tools),
             think_mode=think_mode,
         )
         try:

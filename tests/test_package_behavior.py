@@ -85,9 +85,14 @@ class PackageBehaviorTests(unittest.TestCase):
 
         with patch("ollamanauts.tools.subagents.SubAgent") as mock_subagent:
             mock_subagent.return_value.run.return_value = "done"
+            nested_deploy_tool = make_deploy_subagent_tool(
+                model="gemma4:31b",
+                think_mode="medium",
+            )
             deploy_subagent = make_deploy_subagent_tool(
                 model="gemma4:31b",
                 think_mode="medium",
+                tools=[nested_deploy_tool],
             )
 
             result = deploy_subagent("Summarize the open questions.")
