@@ -232,6 +232,48 @@ class TokenUsageTests(unittest.TestCase):
 
         self.assertEqual(protected, {1, 2, 3})
 
+    def test_collect_unresolved_tool_indices_keeps_assistant_follow_up(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        agent = BaseAgent(
+            model="dummy",
+            orchestrator=ToolOrchestrator([]),
+            system_prompt="system",
+        )
+        non_system = [
+            {"role": "assistant", "content": "", "tool_calls": [{"id": "a"}]},
+            {"role": "tool", "tool_name": "lookup", "content": "result"},
+            {"role": "assistant", "content": "tool interpretation"},
+            {"role": "user", "content": "next turn"},
+        ]
+
+        protected = agent._collect_unresolved_tool_indices(non_system)
+
+        self.assertEqual(protected, {0, 1, 2})
+
+    def test_collect_unresolved_tool_indices_handles_multi_episode_chain(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        agent = BaseAgent(
+            model="dummy",
+            orchestrator=ToolOrchestrator([]),
+            system_prompt="system",
+        )
+        non_system = [
+            {"role": "assistant", "content": "", "tool_calls": [{"id": "a"}]},
+            {"role": "tool", "tool_name": "lookup", "content": "result-a"},
+            {"role": "assistant", "content": "analysis-a"},
+            {"role": "assistant", "content": "", "tool_calls": [{"id": "b"}]},
+            {"role": "tool", "tool_name": "search", "content": "result-b"},
+            {"role": "assistant", "content": "analysis-b"},
+        ]
+
+        protected = agent._collect_unresolved_tool_indices(non_system)
+
+        self.assertEqual(protected, {0, 1, 2, 3, 4, 5})
+
     def test_verbose_printer_token_budget_output(self) -> None:
         stream = io.StringIO()
         printer = VerbosePrinter(stream=stream)

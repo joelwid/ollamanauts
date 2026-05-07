@@ -304,6 +304,11 @@ class BaseAgent:
                 consumed_tool_result = True
                 cursor += 1
 
+            if consumed_tool_result and cursor < len(non_system):
+                follow_up = non_system[cursor]
+                if follow_up.get("role") == "assistant":
+                    protected.add(cursor)
+
             if not consumed_tool_result:
                 protected.add(index)
             index = cursor if cursor > index else index + 1
