@@ -9,6 +9,7 @@ from typing import TypeVar
 
 import ollama
 
+from .token_usage import estimate_messages_tokens
 from .tool_orchestrator import ToolOrchestrator
 from .tool_orchestrator import ToolResult
 
@@ -77,6 +78,8 @@ class BaseAgent:
     think_mode: bool | str | None = "medium"
     system_prompt: str = ""
     messages: list[dict[str, Any]] = field(default_factory=list)
+    max_context_tokens: int | None = None
+    on_token_budget: Callable[[int, int | None], None] | None = None
 
     def __post_init__(self) -> None:
         self.reset()
@@ -95,6 +98,10 @@ class BaseAgent:
         final_text = ""
 
         while True:
+            estimated = estimate_messages_tokens(self.messages)
+            if self.on_token_budget is not None:
+                self.on_token_budget(estimated.estimated_tokens, self.max_context_tokens)
+
             response_stream = ollama.chat(
                 model=self.model,
                 messages=self.messages,
@@ -226,6 +233,7 @@ class Agent:
         subagent_tools: Sequence[Callable[..., Any]] | None = None,
         verbose: bool = False,
         enable_subagents: bool = True,
+        max_context_tokens: int | None = None,
     ) -> None:
         from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
@@ -276,6 +284,10 @@ class Agent:
             system_prompt=_compose_system_prompt(
                 system_prompt=system_prompt,
                 extra_instructions=extra_instructions,
+            ),
+            max_context_tokens=max_context_tokens,
+            on_token_budget=(
+                self._verbose_printer.on_token_budget if self._verbose_printer is not None else None
             ),
         )
         self._verbose = verbose
