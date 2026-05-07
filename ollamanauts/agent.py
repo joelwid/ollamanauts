@@ -100,7 +100,10 @@ class BaseAgent:
         while True:
             estimated = estimate_messages_tokens(self.messages)
             if self.on_token_budget is not None:
-                self.on_token_budget(estimated.estimated_tokens, self.max_context_tokens)
+                self.on_token_budget(
+                    estimated_tokens=estimated.estimated_tokens,
+                    max_context_tokens=self.max_context_tokens,
+                )
 
             response_stream = ollama.chat(
                 model=self.model,
