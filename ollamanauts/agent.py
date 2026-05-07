@@ -87,6 +87,7 @@ class BaseAgent:
     compact_target: float = 0.60
     compaction_preserve_last_n_turns: int = 4
     compaction_model: str | None = None
+    max_compaction_passes: int = 3
 
     def __post_init__(self) -> None:
         if self.compaction_model is None:
@@ -118,13 +119,15 @@ class BaseAgent:
                 estimated_tokens=estimated.estimated_tokens,
                 max_context_tokens=self.max_context_tokens,
                 compact_threshold=self.compact_threshold,
-            ) and self.on_compaction_needed is not None:
-                self.on_compaction_needed(
-                    estimated.estimated_tokens,
-                    self.max_context_tokens or 0,
-                    self.compact_threshold,
-                    self.compact_target,
-                )
+            ):
+                if self.on_compaction_needed is not None:
+                    self.on_compaction_needed(
+                        estimated.estimated_tokens,
+                        self.max_context_tokens or 0,
+                        self.compact_threshold,
+                        self.compact_target,
+                    )
+                self._compact_until_within_budget()
 
             response_stream = ollama.chat(
                 model=self.model,
@@ -199,6 +202,67 @@ class BaseAgent:
                         "content": result.content,
                     }
                 )
+
+    def _compact_until_within_budget(self) -> None:
+        if self.max_context_tokens is None or self.max_context_tokens <= 0:
+            return
+
+        pass_index = 0
+        preserve_turns = self.compaction_preserve_last_n_turns
+        while pass_index < self.max_compaction_passes and should_compact(
+            estimated_tokens=estimate_messages_tokens(self.messages).estimated_tokens,
+            max_context_tokens=self.max_context_tokens,
+            compact_threshold=self.compact_target,
+        ):
+            self._compact_once(preserve_last_n_turns=preserve_turns)
+            pass_index += 1
+            preserve_turns = 0
+
+    def _compact_once(self, *, preserve_last_n_turns: int) -> None:
+        if len(self.messages) <= 2:
+            return
+
+        system_message = self.messages[0]
+        non_system = self.messages[1:]
+        preserve_count = max(0, preserve_last_n_turns * 2)
+        kept_tail = non_system[-preserve_count:] if preserve_count > 0 else []
+        to_summarize = non_system[: len(non_system) - len(kept_tail)] if kept_tail else non_system
+        if not to_summarize:
+            return
+
+        summary = self._summarize_messages(to_summarize)
+        summary_message = {
+            "role": "system",
+            "content": (
+                "Conversation summary for context compaction:\n"
+                f"{summary}"
+            ),
+        }
+        self.messages = [system_message, summary_message, *kept_tail]
+
+    def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
+        serialized = "\n".join(
+            f"{message.get('role', 'unknown')}: {message.get('content', '')}"
+            for message in messages
+        )
+        response = ollama.chat(
+            model=self.compaction_model or self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Summarize the following conversation for future context.\n"
+                        "Preserve facts, decisions, constraints, and unresolved items.\n"
+                        "Be concise and do not invent details."
+                    ),
+                },
+                {"role": "user", "content": serialized},
+            ],
+            stream=False,
+            think=False,
+        )
+        content = response.message.content if getattr(response, "message", None) is not None else ""
+        return content or "No summary available."
 
     def describe_tools(self) -> list[str]:
         return self.orchestrator.tool_names()

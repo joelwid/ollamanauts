@@ -158,6 +158,36 @@ class TokenUsageTests(unittest.TestCase):
 
         self.assertEqual(agent.compaction_model, "gemma4:27b")
 
+    def test_compaction_replaces_older_context_with_summary(self) -> None:
+        from types import SimpleNamespace
+
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        def fake_chat(**kwargs: object) -> object:
+            if kwargs.get("stream") is False:
+                return SimpleNamespace(message=SimpleNamespace(content="summarized context"))
+            return [_Chunk()]
+
+        with unittest.mock.patch("ollamanauts.agent.ollama.chat", side_effect=fake_chat):
+            agent = BaseAgent(
+                model="dummy",
+                orchestrator=ToolOrchestrator([]),
+                system_prompt="system",
+                max_context_tokens=10,
+                compact_threshold=0.1,
+                compact_target=0.1,
+                compaction_preserve_last_n_turns=1,
+            )
+            agent.messages.extend([
+                {"role": "user", "content": "old context A"},
+                {"role": "assistant", "content": "old context B"},
+            ])
+            agent.run_turn("hello world this is a long prompt")
+
+        summary_messages = [m for m in agent.messages if "Conversation summary" in m.get("content", "")]
+        self.assertTrue(summary_messages)
+
     def test_verbose_printer_token_budget_output(self) -> None:
         stream = io.StringIO()
         printer = VerbosePrinter(stream=stream)
