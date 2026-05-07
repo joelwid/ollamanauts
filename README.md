@@ -166,6 +166,9 @@ agent = Agent(
     tools=[],
     verbose=True,
     enable_subagents=True,
+    max_context_tokens=32000,
+    compact_threshold=0.85,
+    compact_target=0.60,
 )
 ```
 
@@ -178,6 +181,13 @@ Constructor arguments:
 - `tools`: explicit user-supplied Python callables exposed as tools
 - `verbose`: when `True`, prints runtime events (thinking/tool/subagent activity) to the terminal
 - `enable_subagents`: when `True`, registers `deploy_subagent`
+- `max_context_tokens`: optional approximate context budget used for token telemetry and compaction checks
+- `subagent_max_context_tokens`: optional subagent budget; defaults to `max_context_tokens` when not provided
+- `enable_auto_compaction`: enables automatic history compaction when threshold is exceeded
+- `compact_threshold`: usage ratio that triggers compaction (for example, `0.85` = 85% of budget)
+- `compact_target`: target usage ratio after compaction passes
+- `compaction_preserve_last_n_turns`: number of recent turns kept verbatim during deterministic compaction
+- `compaction_model`: optional model used for summary generation during compaction (defaults to the primary model)
 
 Methods:
 
@@ -205,6 +215,18 @@ With verbose mode enabled, the terminal output includes:
 - tool call results (`[ok]` / `[error]`)
 - model thinking stream markers (`[thinking] ... [end thinking]`)
 - subagent lifecycle traces when subagents are used (`[subagent]`, subagent thinking/tool traces, and `[subagent result]`)
+
+
+### Context compaction
+
+When `max_context_tokens` is configured, the agent estimates current context usage before each model call.
+If usage crosses `compact_threshold` and `enable_auto_compaction=True`, the agent compacts history by:
+
+- preserving the system prompt
+- preserving unresolved tool episodes and recent turns
+- summarizing older context into a structured memory block (`Facts`, `Decisions`, `Constraints`, `Open Questions`, `Pending Actions`)
+
+If context is still above target, additional compaction passes run and may summarize more aggressively while keeping tool interaction boundaries intact.
 
 ### `BaseAgent`, `InteractiveAgent`, and `SubAgent`
 
