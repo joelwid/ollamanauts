@@ -247,6 +247,11 @@ class Agent:
         base_tools = [*DEFAULT_TOOLS, *(tools or ())]
         configured_subagent_tools = [*base_tools] if subagent_tools is None else [*subagent_tools]
         configured_tools = [*base_tools]
+        effective_subagent_max_context_tokens = (
+            max_context_tokens
+            if subagent_max_context_tokens is None
+            else subagent_max_context_tokens
+        )
         if enable_subagents:
             configured_tools.append(
                 make_deploy_subagent_tool(
@@ -278,7 +283,7 @@ class Agent:
                         if self._verbose_printer is not None
                         else None
                     ),
-                    max_context_tokens=subagent_max_context_tokens,
+                    max_context_tokens=effective_subagent_max_context_tokens,
                     on_token_budget=(
                         self._verbose_printer.on_subagent_token_budget
                         if self._verbose_printer is not None

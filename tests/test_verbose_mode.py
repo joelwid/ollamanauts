@@ -137,6 +137,16 @@ class VerboseModeTests(unittest.TestCase):
         kwargs = mock_make.call_args.kwargs
         self.assertEqual(kwargs["max_context_tokens"], 512)
 
+    def test_subagent_max_context_tokens_falls_back_to_agent_budget(self) -> None:
+        from ollamanauts import Agent
+
+        fake_deploy_tool = lambda task: task
+        with patch("ollamanauts.tools.make_deploy_subagent_tool", return_value=fake_deploy_tool) as mock_make:
+            Agent(verbose=False, enable_subagents=True, max_context_tokens=2048)
+
+        kwargs = mock_make.call_args.kwargs
+        self.assertEqual(kwargs["max_context_tokens"], 2048)
+
     def test_verbose_false_keeps_callbacks_unset(self) -> None:
         from ollamanauts import Agent
 
