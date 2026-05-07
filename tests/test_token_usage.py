@@ -188,6 +188,29 @@ class TokenUsageTests(unittest.TestCase):
         summary_messages = [m for m in agent.messages if "Conversation summary" in m.get("content", "")]
         self.assertTrue(summary_messages)
 
+    def test_expand_tail_keeps_tool_call_result_boundary_intact(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        agent = BaseAgent(
+            model="dummy",
+            orchestrator=ToolOrchestrator([]),
+            system_prompt="system",
+        )
+        non_system = [
+            {"role": "user", "content": "old context"},
+            {"role": "assistant", "content": "", "tool_calls": [{"id": "1"}]},
+            {"role": "tool", "tool_name": "lookup", "content": "result"},
+            {"role": "assistant", "content": "follow-up"},
+        ]
+        kept_tail = non_system[-2:]
+
+        expanded = agent._expand_tail_for_tool_integrity(non_system=non_system, kept_tail=kept_tail)
+
+        self.assertEqual(expanded[0].get("role"), "assistant")
+        self.assertTrue(expanded[0].get("tool_calls"))
+        self.assertEqual(expanded[1].get("role"), "tool")
+
     def test_verbose_printer_token_budget_output(self) -> None:
         stream = io.StringIO()
         printer = VerbosePrinter(stream=stream)

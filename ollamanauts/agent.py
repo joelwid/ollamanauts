@@ -226,6 +226,7 @@ class BaseAgent:
         non_system = self.messages[1:]
         preserve_count = max(0, preserve_last_n_turns * 2)
         kept_tail = non_system[-preserve_count:] if preserve_count > 0 else []
+        kept_tail = self._expand_tail_for_tool_integrity(non_system=non_system, kept_tail=kept_tail)
         to_summarize = non_system[: len(non_system) - len(kept_tail)] if kept_tail else non_system
         if not to_summarize:
             return
@@ -239,6 +240,43 @@ class BaseAgent:
             ),
         }
         self.messages = [system_message, summary_message, *kept_tail]
+
+    def _expand_tail_for_tool_integrity(
+        self,
+        *,
+        non_system: list[dict[str, Any]],
+        kept_tail: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        if not kept_tail:
+            if not non_system:
+                return kept_tail
+            boundary_index = len(non_system)
+            while boundary_index > 0 and non_system[boundary_index - 1].get("role") == "tool":
+                boundary_index -= 1
+                if boundary_index > 0 and non_system[boundary_index - 1].get("tool_calls"):
+                    boundary_index -= 1
+            return non_system[boundary_index:]
+
+        boundary_index = len(non_system) - len(kept_tail)
+        while boundary_index > 0:
+            previous = non_system[boundary_index - 1]
+            first_tail = non_system[boundary_index]
+
+            previous_has_tool_calls = bool(previous.get("tool_calls"))
+            first_tail_is_tool_result = first_tail.get("role") == "tool"
+            if previous_has_tool_calls and first_tail_is_tool_result:
+                boundary_index -= 1
+                continue
+
+            previous_is_tool_result = previous.get("role") == "tool"
+            first_tail_has_tool_calls = bool(first_tail.get("tool_calls"))
+            if previous_is_tool_result and first_tail_has_tool_calls:
+                boundary_index -= 1
+                continue
+
+            break
+
+        return non_system[boundary_index:]
 
     def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
         serialized = "\n".join(
