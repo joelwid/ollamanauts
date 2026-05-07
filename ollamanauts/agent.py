@@ -87,6 +87,8 @@ class BaseAgent:
     compaction_model: str | None = None
 
     def __post_init__(self) -> None:
+        if self.compaction_model is None:
+            self.compaction_model = self.model
         self.reset()
 
     def reset(self) -> None:

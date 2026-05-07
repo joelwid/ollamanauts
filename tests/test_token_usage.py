@@ -91,6 +91,31 @@ class TokenUsageTests(unittest.TestCase):
         self.assertIn("estimated_tokens", captured)
         self.assertEqual(captured["max_context_tokens"], 1024)
 
+    def test_base_agent_defaults_compaction_model_to_model(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        agent = BaseAgent(
+            model="gemma4:31b",
+            orchestrator=ToolOrchestrator([]),
+            system_prompt="system",
+        )
+
+        self.assertEqual(agent.compaction_model, "gemma4:31b")
+
+    def test_base_agent_keeps_explicit_compaction_model(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        agent = BaseAgent(
+            model="gemma4:31b",
+            orchestrator=ToolOrchestrator([]),
+            system_prompt="system",
+            compaction_model="gemma4:27b",
+        )
+
+        self.assertEqual(agent.compaction_model, "gemma4:27b")
+
     def test_verbose_printer_token_budget_output(self) -> None:
         stream = io.StringIO()
         printer = VerbosePrinter(stream=stream)
