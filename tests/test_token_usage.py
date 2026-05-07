@@ -274,6 +274,35 @@ class TokenUsageTests(unittest.TestCase):
 
         self.assertEqual(protected, {0, 1, 2, 3, 4, 5})
 
+    def test_summary_prompt_uses_structured_memory_sections(self) -> None:
+        from types import SimpleNamespace
+
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        captured_prompt: dict[str, str] = {}
+
+        def fake_chat(**kwargs: object) -> object:
+            messages = kwargs.get("messages")
+            if isinstance(messages, list) and messages:
+                captured_prompt["prompt"] = messages[0]["content"]
+            return SimpleNamespace(message=SimpleNamespace(content="structured summary"))
+
+        with unittest.mock.patch("ollamanauts.agent.ollama.chat", side_effect=fake_chat):
+            agent = BaseAgent(
+                model="dummy",
+                orchestrator=ToolOrchestrator([]),
+                system_prompt="system",
+            )
+            agent._summarize_messages([{"role": "user", "content": "hello"}])
+
+        prompt = captured_prompt["prompt"]
+        self.assertIn("## Facts", prompt)
+        self.assertIn("## Decisions", prompt)
+        self.assertIn("## Constraints", prompt)
+        self.assertIn("## Open Questions", prompt)
+        self.assertIn("## Pending Actions", prompt)
+
     def test_verbose_printer_token_budget_output(self) -> None:
         stream = io.StringIO()
         printer = VerbosePrinter(stream=stream)

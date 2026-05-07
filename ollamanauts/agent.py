@@ -327,8 +327,15 @@ class BaseAgent:
                     "role": "system",
                     "content": (
                         "Summarize the following conversation for future context.\n"
-                        "Preserve facts, decisions, constraints, and unresolved items.\n"
-                        "Be concise and do not invent details."
+                        "Output exactly these markdown sections in order:\n"
+                        "## Facts\n"
+                        "## Decisions\n"
+                        "## Constraints\n"
+                        "## Open Questions\n"
+                        "## Pending Actions\n"
+                        "Use concise bullet points under each section.\n"
+                        "If a section has no items, write '- None'.\n"
+                        "Do not invent details."
                     ),
                 },
                 {"role": "user", "content": serialized},
