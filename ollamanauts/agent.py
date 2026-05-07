@@ -10,6 +10,7 @@ from typing import TypeVar
 import ollama
 
 from .token_usage import estimate_messages_tokens
+from .token_usage import should_compact
 from .tool_orchestrator import ToolOrchestrator
 from .tool_orchestrator import ToolResult
 
@@ -80,6 +81,7 @@ class BaseAgent:
     messages: list[dict[str, Any]] = field(default_factory=list)
     max_context_tokens: int | None = None
     on_token_budget: Callable[[int, int | None], None] | None = None
+    on_compaction_needed: Callable[[int, int, float, float], None] | None = None
     enable_auto_compaction: bool = True
     compact_threshold: float = 0.85
     compact_target: float = 0.60
@@ -110,6 +112,18 @@ class BaseAgent:
                 self.on_token_budget(
                     estimated_tokens=estimated.estimated_tokens,
                     max_context_tokens=self.max_context_tokens,
+                )
+
+            if self.enable_auto_compaction and should_compact(
+                estimated_tokens=estimated.estimated_tokens,
+                max_context_tokens=self.max_context_tokens,
+                compact_threshold=self.compact_threshold,
+            ) and self.on_compaction_needed is not None:
+                self.on_compaction_needed(
+                    estimated.estimated_tokens,
+                    self.max_context_tokens or 0,
+                    self.compact_threshold,
+                    self.compact_target,
                 )
 
             response_stream = ollama.chat(
@@ -331,6 +345,11 @@ class Agent:
                         if self._verbose_printer is not None
                         else None
                     ),
+                    on_compaction_needed=(
+                        self._verbose_printer.on_subagent_compaction_needed
+                        if self._verbose_printer is not None
+                        else None
+                    ),
                     enable_auto_compaction=effective_subagent_enable_auto_compaction,
                     compact_threshold=effective_subagent_compact_threshold,
                     compact_target=effective_subagent_compact_target,
@@ -350,6 +369,9 @@ class Agent:
             max_context_tokens=max_context_tokens,
             on_token_budget=(
                 self._verbose_printer.on_token_budget if self._verbose_printer is not None else None
+            ),
+            on_compaction_needed=(
+                self._verbose_printer.on_compaction_needed if self._verbose_printer is not None else None
             ),
             enable_auto_compaction=enable_auto_compaction,
             compact_threshold=compact_threshold,

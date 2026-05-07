@@ -90,6 +90,7 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNotNone(kwargs["on_thinking_end"])
         self.assertIsNotNone(kwargs["on_result"])
         self.assertIsNotNone(kwargs["on_token_budget"])
+        self.assertIsNotNone(kwargs["on_compaction_needed"])
 
 
     def test_subagent_tools_default_to_agent_tools(self) -> None:
@@ -209,6 +210,7 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNone(kwargs["on_thinking_end"])
         self.assertIsNone(kwargs["on_result"])
         self.assertIsNone(kwargs["on_token_budget"])
+        self.assertIsNone(kwargs["on_compaction_needed"])
 
 
 if __name__ == "__main__":

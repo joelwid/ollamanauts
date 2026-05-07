@@ -26,6 +26,7 @@ _install_ollama_stub()
 
 from ollamanauts.token_usage import estimate_message_tokens
 from ollamanauts.token_usage import estimate_messages_tokens
+from ollamanauts.token_usage import should_compact
 from ollamanauts.verbose_output import VerbosePrinter
 
 
@@ -53,6 +54,14 @@ class TokenUsageTests(unittest.TestCase):
 
         self.assertEqual(estimate.message_count, 2)
         self.assertGreater(estimate.estimated_tokens, 0)
+
+    def test_should_compact_threshold_behavior(self) -> None:
+        self.assertFalse(
+            should_compact(estimated_tokens=200, max_context_tokens=400, compact_threshold=0.75)
+        )
+        self.assertTrue(
+            should_compact(estimated_tokens=300, max_context_tokens=400, compact_threshold=0.75)
+        )
 
     def test_estimate_message_tokens_includes_tool_calls_and_thinking(self) -> None:
         message = {
@@ -90,6 +99,39 @@ class TokenUsageTests(unittest.TestCase):
         self.assertEqual(result, "done")
         self.assertIn("estimated_tokens", captured)
         self.assertEqual(captured["max_context_tokens"], 1024)
+
+    def test_compaction_needed_callback_triggers_at_threshold(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        compaction_called: dict[str, float] = {}
+
+        def on_compaction_needed(
+            estimated_tokens: int,
+            max_context_tokens: int,
+            compact_threshold: float,
+            compact_target: float,
+        ) -> None:
+            compaction_called["estimated_tokens"] = float(estimated_tokens)
+            compaction_called["max_context_tokens"] = float(max_context_tokens)
+            compaction_called["compact_threshold"] = compact_threshold
+            compaction_called["compact_target"] = compact_target
+
+        with unittest.mock.patch("ollamanauts.agent.ollama.chat", return_value=[_Chunk()]):
+            agent = BaseAgent(
+                model="dummy",
+                orchestrator=ToolOrchestrator([]),
+                system_prompt="system",
+                max_context_tokens=10,
+                compact_threshold=0.1,
+                compact_target=0.5,
+                on_compaction_needed=on_compaction_needed,
+            )
+            agent.run_turn("hello")
+
+        self.assertEqual(compaction_called["max_context_tokens"], 10.0)
+        self.assertEqual(compaction_called["compact_threshold"], 0.1)
+        self.assertEqual(compaction_called["compact_target"], 0.5)
 
     def test_base_agent_defaults_compaction_model_to_model(self) -> None:
         from ollamanauts.agent import BaseAgent

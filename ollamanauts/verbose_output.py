@@ -25,6 +25,21 @@ class VerbosePrinter:
             f"\n[tokens] estimated={estimated_tokens} / {max_context_tokens} ({usage_percent:.1f}%)",
             file=self._stream,
         )
+    def on_compaction_needed(
+        self,
+        estimated_tokens: int,
+        max_context_tokens: int,
+        compact_threshold: float,
+        compact_target: float,
+    ) -> None:
+        usage_percent = (estimated_tokens / max_context_tokens) * 100
+        threshold_percent = compact_threshold * 100
+        target_percent = compact_target * 100
+        print(
+            f"\n[compact] usage={usage_percent:.1f}% threshold={threshold_percent:.1f}% target={target_percent:.1f}%",
+            file=self._stream,
+        )
+
     def on_tool_result(self, result: ToolResult) -> None:
         status = "ok" if result.ok else "error"
         print(f"\n[{status}] {result.name}({result.arguments})", file=self._stream)
@@ -71,6 +86,21 @@ class VerbosePrinter:
         usage_percent = (estimated_tokens / max_context_tokens) * 100
         print(
             f"\n[subagent tokens] estimated={estimated_tokens} / {max_context_tokens} ({usage_percent:.1f}%)",
+            file=self._stream,
+        )
+
+    def on_subagent_compaction_needed(
+        self,
+        estimated_tokens: int,
+        max_context_tokens: int,
+        compact_threshold: float,
+        compact_target: float,
+    ) -> None:
+        usage_percent = (estimated_tokens / max_context_tokens) * 100
+        threshold_percent = compact_threshold * 100
+        target_percent = compact_target * 100
+        print(
+            f"\n[subagent compact] usage={usage_percent:.1f}% threshold={threshold_percent:.1f}% target={target_percent:.1f}%",
             file=self._stream,
         )
 

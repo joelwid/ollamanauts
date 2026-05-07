@@ -61,3 +61,9 @@ def build_token_budget_report(
         estimated_tokens=usage.estimated_tokens,
         max_context_tokens=max_context_tokens,
     )
+
+
+def should_compact(*, estimated_tokens: int, max_context_tokens: int | None, compact_threshold: float) -> bool:
+    if max_context_tokens is None or max_context_tokens <= 0:
+        return False
+    return (estimated_tokens / max_context_tokens) >= compact_threshold
