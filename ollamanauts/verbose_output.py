@@ -58,6 +58,22 @@ class VerbosePrinter:
             print("\n[end subagent thinking]", file=self._stream)
             self._subagent_thinking_open = False
 
+    def on_subagent_token_budget(
+        self,
+        *,
+        estimated_tokens: int,
+        max_context_tokens: int | None = None,
+    ) -> None:
+        if max_context_tokens is None:
+            print(f"\n[subagent tokens] estimated={estimated_tokens}", file=self._stream)
+            return
+
+        usage_percent = (estimated_tokens / max_context_tokens) * 100
+        print(
+            f"\n[subagent tokens] estimated={estimated_tokens} / {max_context_tokens} ({usage_percent:.1f}%)",
+            file=self._stream,
+        )
+
     def on_subagent_result(self, result: str) -> None:
         if result:
             print("\n[subagent result]", file=self._stream)

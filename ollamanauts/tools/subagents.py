@@ -25,6 +25,8 @@ def make_deploy_subagent_tool(
     on_thinking_chunk: Callable[[str], None] | None = None,
     on_thinking_end: Callable[[], None] | None = None,
     on_result: Callable[[str], None] | None = None,
+    max_context_tokens: int | None = None,
+    on_token_budget: Callable[[int, int | None], None] | None = None,
 ) -> Callable[[str], str]:
     filtered_tools = _filter_nested_subagent_tool(tools)
 
@@ -48,6 +50,8 @@ def make_deploy_subagent_tool(
             model=model,
             orchestrator=ToolOrchestrator(filtered_tools),
             think_mode=think_mode,
+            max_context_tokens=max_context_tokens,
+            on_token_budget=on_token_budget,
         )
         try:
             result = agent.run(

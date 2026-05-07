@@ -237,6 +237,7 @@ class Agent:
         verbose: bool = False,
         enable_subagents: bool = True,
         max_context_tokens: int | None = None,
+        subagent_max_context_tokens: int | None = None,
     ) -> None:
         from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
@@ -274,6 +275,12 @@ class Agent:
                     ),
                     on_result=(
                         self._verbose_printer.on_subagent_result
+                        if self._verbose_printer is not None
+                        else None
+                    ),
+                    max_context_tokens=subagent_max_context_tokens,
+                    on_token_budget=(
+                        self._verbose_printer.on_subagent_token_budget
                         if self._verbose_printer is not None
                         else None
                     ),

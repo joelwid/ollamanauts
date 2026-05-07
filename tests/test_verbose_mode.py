@@ -89,6 +89,7 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNotNone(kwargs["on_thinking_chunk"])
         self.assertIsNotNone(kwargs["on_thinking_end"])
         self.assertIsNotNone(kwargs["on_result"])
+        self.assertIsNotNone(kwargs["on_token_budget"])
 
 
     def test_subagent_tools_default_to_agent_tools(self) -> None:
@@ -125,6 +126,17 @@ class VerboseModeTests(unittest.TestCase):
         kwargs = mock_make.call_args.kwargs
         self.assertEqual(kwargs["tools"], [escalate_ticket])
 
+
+    def test_subagent_max_context_tokens_is_forwarded(self) -> None:
+        from ollamanauts import Agent
+
+        fake_deploy_tool = lambda task: task
+        with patch("ollamanauts.tools.make_deploy_subagent_tool", return_value=fake_deploy_tool) as mock_make:
+            Agent(verbose=False, enable_subagents=True, subagent_max_context_tokens=512)
+
+        kwargs = mock_make.call_args.kwargs
+        self.assertEqual(kwargs["max_context_tokens"], 512)
+
     def test_verbose_false_keeps_callbacks_unset(self) -> None:
         from ollamanauts import Agent
 
@@ -155,6 +167,7 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNone(kwargs["on_thinking_chunk"])
         self.assertIsNone(kwargs["on_thinking_end"])
         self.assertIsNone(kwargs["on_result"])
+        self.assertIsNone(kwargs["on_token_budget"])
 
 
 if __name__ == "__main__":
