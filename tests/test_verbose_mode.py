@@ -147,6 +147,37 @@ class VerboseModeTests(unittest.TestCase):
         kwargs = mock_make.call_args.kwargs
         self.assertEqual(kwargs["max_context_tokens"], 2048)
 
+    def test_compaction_config_is_forwarded_to_base_agent_and_subagent_tool(self) -> None:
+        from ollamanauts import Agent
+
+        fake_deploy_tool = lambda task: task
+        with patch("ollamanauts.agent.BaseAgent") as mock_base_agent, patch(
+            "ollamanauts.tools.make_deploy_subagent_tool", return_value=fake_deploy_tool
+        ) as mock_make:
+            Agent(
+                verbose=False,
+                enable_subagents=True,
+                enable_auto_compaction=False,
+                compact_threshold=0.9,
+                compact_target=0.5,
+                compaction_preserve_last_n_turns=6,
+                compaction_model="gemma4:27b",
+            )
+
+        base_kwargs = mock_base_agent.call_args.kwargs
+        self.assertFalse(base_kwargs["enable_auto_compaction"])
+        self.assertEqual(base_kwargs["compact_threshold"], 0.9)
+        self.assertEqual(base_kwargs["compact_target"], 0.5)
+        self.assertEqual(base_kwargs["compaction_preserve_last_n_turns"], 6)
+        self.assertEqual(base_kwargs["compaction_model"], "gemma4:27b")
+
+        sub_kwargs = mock_make.call_args.kwargs
+        self.assertFalse(sub_kwargs["enable_auto_compaction"])
+        self.assertEqual(sub_kwargs["compact_threshold"], 0.9)
+        self.assertEqual(sub_kwargs["compact_target"], 0.5)
+        self.assertEqual(sub_kwargs["compaction_preserve_last_n_turns"], 6)
+        self.assertEqual(sub_kwargs["compaction_model"], "gemma4:27b")
+
     def test_verbose_false_keeps_callbacks_unset(self) -> None:
         from ollamanauts import Agent
 

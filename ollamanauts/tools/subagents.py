@@ -27,6 +27,11 @@ def make_deploy_subagent_tool(
     on_result: Callable[[str], None] | None = None,
     max_context_tokens: int | None = None,
     on_token_budget: Callable[[int, int | None], None] | None = None,
+    enable_auto_compaction: bool = True,
+    compact_threshold: float = 0.85,
+    compact_target: float = 0.60,
+    compaction_preserve_last_n_turns: int = 4,
+    compaction_model: str | None = None,
 ) -> Callable[[str], str]:
     filtered_tools = _filter_nested_subagent_tool(tools)
 
@@ -52,6 +57,11 @@ def make_deploy_subagent_tool(
             think_mode=think_mode,
             max_context_tokens=max_context_tokens,
             on_token_budget=on_token_budget,
+            enable_auto_compaction=enable_auto_compaction,
+            compact_threshold=compact_threshold,
+            compact_target=compact_target,
+            compaction_preserve_last_n_turns=compaction_preserve_last_n_turns,
+            compaction_model=compaction_model,
         )
         try:
             result = agent.run(

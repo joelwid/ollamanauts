@@ -80,6 +80,11 @@ class BaseAgent:
     messages: list[dict[str, Any]] = field(default_factory=list)
     max_context_tokens: int | None = None
     on_token_budget: Callable[[int, int | None], None] | None = None
+    enable_auto_compaction: bool = True
+    compact_threshold: float = 0.85
+    compact_target: float = 0.60
+    compaction_preserve_last_n_turns: int = 4
+    compaction_model: str | None = None
 
     def __post_init__(self) -> None:
         self.reset()
@@ -238,6 +243,16 @@ class Agent:
         enable_subagents: bool = True,
         max_context_tokens: int | None = None,
         subagent_max_context_tokens: int | None = None,
+        enable_auto_compaction: bool = True,
+        compact_threshold: float = 0.85,
+        compact_target: float = 0.60,
+        compaction_preserve_last_n_turns: int = 4,
+        compaction_model: str | None = None,
+        subagent_enable_auto_compaction: bool | None = None,
+        subagent_compact_threshold: float | None = None,
+        subagent_compact_target: float | None = None,
+        subagent_compaction_preserve_last_n_turns: int | None = None,
+        subagent_compaction_model: str | None = None,
     ) -> None:
         from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
@@ -251,6 +266,31 @@ class Agent:
             max_context_tokens
             if subagent_max_context_tokens is None
             else subagent_max_context_tokens
+        )
+        effective_subagent_enable_auto_compaction = (
+            enable_auto_compaction
+            if subagent_enable_auto_compaction is None
+            else subagent_enable_auto_compaction
+        )
+        effective_subagent_compact_threshold = (
+            compact_threshold
+            if subagent_compact_threshold is None
+            else subagent_compact_threshold
+        )
+        effective_subagent_compact_target = (
+            compact_target
+            if subagent_compact_target is None
+            else subagent_compact_target
+        )
+        effective_subagent_compaction_preserve_last_n_turns = (
+            compaction_preserve_last_n_turns
+            if subagent_compaction_preserve_last_n_turns is None
+            else subagent_compaction_preserve_last_n_turns
+        )
+        effective_subagent_compaction_model = (
+            compaction_model
+            if subagent_compaction_model is None
+            else subagent_compaction_model
         )
         if enable_subagents:
             configured_tools.append(
@@ -289,6 +329,11 @@ class Agent:
                         if self._verbose_printer is not None
                         else None
                     ),
+                    enable_auto_compaction=effective_subagent_enable_auto_compaction,
+                    compact_threshold=effective_subagent_compact_threshold,
+                    compact_target=effective_subagent_compact_target,
+                    compaction_preserve_last_n_turns=effective_subagent_compaction_preserve_last_n_turns,
+                    compaction_model=effective_subagent_compaction_model,
                 )
             )
 
@@ -304,6 +349,11 @@ class Agent:
             on_token_budget=(
                 self._verbose_printer.on_token_budget if self._verbose_printer is not None else None
             ),
+            enable_auto_compaction=enable_auto_compaction,
+            compact_threshold=compact_threshold,
+            compact_target=compact_target,
+            compaction_preserve_last_n_turns=compaction_preserve_last_n_turns,
+            compaction_model=compaction_model,
         )
         self._verbose = verbose
 
