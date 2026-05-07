@@ -9,8 +9,6 @@ from typing import TypeVar
 
 import ollama
 
-from .token_usage import estimate_messages_tokens
-from .token_usage import should_compact
 from .tool_orchestrator import ToolOrchestrator
 from .tool_orchestrator import ToolResult
 
@@ -79,19 +77,8 @@ class BaseAgent:
     think_mode: bool | str | None = "medium"
     system_prompt: str = ""
     messages: list[dict[str, Any]] = field(default_factory=list)
-    max_context_tokens: int | None = None
-    on_token_budget: Callable[[int, int | None], None] | None = None
-    on_compaction_needed: Callable[[int, int, float, float], None] | None = None
-    enable_auto_compaction: bool = True
-    compact_threshold: float = 0.85
-    compact_target: float = 0.60
-    compaction_preserve_last_n_turns: int = 4
-    compaction_model: str | None = None
-    max_compaction_passes: int = 3
 
     def __post_init__(self) -> None:
-        if self.compaction_model is None:
-            self.compaction_model = self.model
         self.reset()
 
     def reset(self) -> None:
@@ -108,27 +95,6 @@ class BaseAgent:
         final_text = ""
 
         while True:
-            estimated = estimate_messages_tokens(self.messages)
-            if self.on_token_budget is not None:
-                self.on_token_budget(
-                    estimated_tokens=estimated.estimated_tokens,
-                    max_context_tokens=self.max_context_tokens,
-                )
-
-            if self.enable_auto_compaction and should_compact(
-                estimated_tokens=estimated.estimated_tokens,
-                max_context_tokens=self.max_context_tokens,
-                compact_threshold=self.compact_threshold,
-            ):
-                if self.on_compaction_needed is not None:
-                    self.on_compaction_needed(
-                        estimated.estimated_tokens,
-                        self.max_context_tokens or 0,
-                        self.compact_threshold,
-                        self.compact_target,
-                    )
-                self._compact_until_within_budget()
-
             response_stream = ollama.chat(
                 model=self.model,
                 messages=self.messages,
@@ -203,149 +169,6 @@ class BaseAgent:
                     }
                 )
 
-    def _compact_until_within_budget(self) -> None:
-        if self.max_context_tokens is None or self.max_context_tokens <= 0:
-            return
-
-        pass_index = 0
-        preserve_turns = self.compaction_preserve_last_n_turns
-        while pass_index < self.max_compaction_passes and should_compact(
-            estimated_tokens=estimate_messages_tokens(self.messages).estimated_tokens,
-            max_context_tokens=self.max_context_tokens,
-            compact_threshold=self.compact_target,
-        ):
-            self._compact_once(preserve_last_n_turns=preserve_turns)
-            pass_index += 1
-            preserve_turns = 0
-
-    def _compact_once(self, *, preserve_last_n_turns: int) -> None:
-        if len(self.messages) <= 2:
-            return
-
-        system_message = self.messages[0]
-        non_system = self.messages[1:]
-        preserve_count = max(0, preserve_last_n_turns * 2)
-        kept_tail = non_system[-preserve_count:] if preserve_count > 0 else []
-        kept_tail = self._expand_tail_for_tool_integrity(non_system=non_system, kept_tail=kept_tail)
-        protected_indices = self._collect_unresolved_tool_indices(non_system)
-        compaction_boundary = len(non_system) - len(kept_tail) if kept_tail else len(non_system)
-        summarize_candidates = non_system[:compaction_boundary]
-        protected_messages = [non_system[i] for i in sorted(protected_indices) if i < compaction_boundary]
-        to_summarize = [
-            message
-            for i, message in enumerate(summarize_candidates)
-            if i not in protected_indices
-        ]
-        kept_tail = [*protected_messages, *kept_tail]
-        if not to_summarize:
-            return
-
-        summary = self._summarize_messages(to_summarize)
-        summary_message = {
-            "role": "system",
-            "content": (
-                "Conversation summary for context compaction:\n"
-                f"{summary}"
-            ),
-        }
-        self.messages = [system_message, summary_message, *kept_tail]
-
-    def _expand_tail_for_tool_integrity(
-        self,
-        *,
-        non_system: list[dict[str, Any]],
-        kept_tail: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        if not kept_tail:
-            if not non_system:
-                return kept_tail
-            boundary_index = len(non_system)
-            while boundary_index > 0 and non_system[boundary_index - 1].get("role") == "tool":
-                boundary_index -= 1
-                if boundary_index > 0 and non_system[boundary_index - 1].get("tool_calls"):
-                    boundary_index -= 1
-            return non_system[boundary_index:]
-
-        boundary_index = len(non_system) - len(kept_tail)
-        while boundary_index > 0:
-            previous = non_system[boundary_index - 1]
-            first_tail = non_system[boundary_index]
-
-            previous_has_tool_calls = bool(previous.get("tool_calls"))
-            first_tail_is_tool_result = first_tail.get("role") == "tool"
-            if previous_has_tool_calls and first_tail_is_tool_result:
-                boundary_index -= 1
-                continue
-
-            previous_is_tool_result = previous.get("role") == "tool"
-            first_tail_has_tool_calls = bool(first_tail.get("tool_calls"))
-            if previous_is_tool_result and first_tail_has_tool_calls:
-                boundary_index -= 1
-                continue
-
-            break
-
-        return non_system[boundary_index:]
-
-    def _collect_unresolved_tool_indices(self, non_system: list[dict[str, Any]]) -> set[int]:
-        protected: set[int] = set()
-        index = 0
-        while index < len(non_system):
-            message = non_system[index]
-            if not message.get("tool_calls"):
-                index += 1
-                continue
-
-            protected.add(index)
-            cursor = index + 1
-            consumed_tool_result = False
-            while cursor < len(non_system) and non_system[cursor].get("role") == "tool":
-                protected.add(cursor)
-                consumed_tool_result = True
-                cursor += 1
-
-            if consumed_tool_result and cursor < len(non_system):
-                follow_up = non_system[cursor]
-                if follow_up.get("role") == "assistant":
-                    protected.add(cursor)
-
-            if not consumed_tool_result:
-                protected.add(index)
-            index = cursor if cursor > index else index + 1
-
-        return protected
-
-    def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
-        serialized = "\n".join(
-            f"{message.get('role', 'unknown')}: {message.get('content', '')}"
-            for message in messages
-        )
-        response = ollama.chat(
-            model=self.compaction_model or self.model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Summarize the following conversation for future context.\n"
-                        "Output exactly these markdown sections in order:\n"
-                        "## Facts\n"
-                        "## Decisions\n"
-                        "## Constraints\n"
-                        "## Open Questions\n"
-                        "## Pending Actions\n"
-                        "Use concise bullet points under each section.\n"
-                        "If a section has no items, write '- None'.\n"
-                        "Do not invent details."
-                    ),
-                },
-                {"role": "user", "content": serialized},
-            ],
-            stream=False,
-            think=False,
-        )
-        content = response.message.content if getattr(response, "message", None) is not None else ""
-        return content or "No summary available."
-
     def describe_tools(self) -> list[str]:
         return self.orchestrator.tool_names()
 
@@ -403,18 +226,6 @@ class Agent:
         subagent_tools: Sequence[Callable[..., Any]] | None = None,
         verbose: bool = False,
         enable_subagents: bool = True,
-        max_context_tokens: int | None = None,
-        subagent_max_context_tokens: int | None = None,
-        enable_auto_compaction: bool = True,
-        compact_threshold: float = 0.85,
-        compact_target: float = 0.60,
-        compaction_preserve_last_n_turns: int = 4,
-        compaction_model: str | None = None,
-        subagent_enable_auto_compaction: bool | None = None,
-        subagent_compact_threshold: float | None = None,
-        subagent_compact_target: float | None = None,
-        subagent_compaction_preserve_last_n_turns: int | None = None,
-        subagent_compaction_model: str | None = None,
     ) -> None:
         from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
@@ -424,36 +235,6 @@ class Agent:
         base_tools = [*DEFAULT_TOOLS, *(tools or ())]
         configured_subagent_tools = [*base_tools] if subagent_tools is None else [*subagent_tools]
         configured_tools = [*base_tools]
-        effective_subagent_max_context_tokens = (
-            max_context_tokens
-            if subagent_max_context_tokens is None
-            else subagent_max_context_tokens
-        )
-        effective_subagent_enable_auto_compaction = (
-            enable_auto_compaction
-            if subagent_enable_auto_compaction is None
-            else subagent_enable_auto_compaction
-        )
-        effective_subagent_compact_threshold = (
-            compact_threshold
-            if subagent_compact_threshold is None
-            else subagent_compact_threshold
-        )
-        effective_subagent_compact_target = (
-            compact_target
-            if subagent_compact_target is None
-            else subagent_compact_target
-        )
-        effective_subagent_compaction_preserve_last_n_turns = (
-            compaction_preserve_last_n_turns
-            if subagent_compaction_preserve_last_n_turns is None
-            else subagent_compaction_preserve_last_n_turns
-        )
-        effective_subagent_compaction_model = (
-            compaction_model
-            if subagent_compaction_model is None
-            else subagent_compaction_model
-        )
         if enable_subagents:
             configured_tools.append(
                 make_deploy_subagent_tool(
@@ -485,22 +266,6 @@ class Agent:
                         if self._verbose_printer is not None
                         else None
                     ),
-                    max_context_tokens=effective_subagent_max_context_tokens,
-                    on_token_budget=(
-                        self._verbose_printer.on_subagent_token_budget
-                        if self._verbose_printer is not None
-                        else None
-                    ),
-                    on_compaction_needed=(
-                        self._verbose_printer.on_subagent_compaction_needed
-                        if self._verbose_printer is not None
-                        else None
-                    ),
-                    enable_auto_compaction=effective_subagent_enable_auto_compaction,
-                    compact_threshold=effective_subagent_compact_threshold,
-                    compact_target=effective_subagent_compact_target,
-                    compaction_preserve_last_n_turns=effective_subagent_compaction_preserve_last_n_turns,
-                    compaction_model=effective_subagent_compaction_model,
                 )
             )
 
@@ -512,18 +277,6 @@ class Agent:
                 system_prompt=system_prompt,
                 extra_instructions=extra_instructions,
             ),
-            max_context_tokens=max_context_tokens,
-            on_token_budget=(
-                self._verbose_printer.on_token_budget if self._verbose_printer is not None else None
-            ),
-            on_compaction_needed=(
-                self._verbose_printer.on_compaction_needed if self._verbose_printer is not None else None
-            ),
-            enable_auto_compaction=enable_auto_compaction,
-            compact_threshold=compact_threshold,
-            compact_target=compact_target,
-            compaction_preserve_last_n_turns=compaction_preserve_last_n_turns,
-            compaction_model=compaction_model,
         )
         self._verbose = verbose
 
