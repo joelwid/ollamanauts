@@ -227,7 +227,16 @@ class BaseAgent:
         preserve_count = max(0, preserve_last_n_turns * 2)
         kept_tail = non_system[-preserve_count:] if preserve_count > 0 else []
         kept_tail = self._expand_tail_for_tool_integrity(non_system=non_system, kept_tail=kept_tail)
-        to_summarize = non_system[: len(non_system) - len(kept_tail)] if kept_tail else non_system
+        protected_indices = self._collect_unresolved_tool_indices(non_system)
+        compaction_boundary = len(non_system) - len(kept_tail) if kept_tail else len(non_system)
+        summarize_candidates = non_system[:compaction_boundary]
+        protected_messages = [non_system[i] for i in sorted(protected_indices) if i < compaction_boundary]
+        to_summarize = [
+            message
+            for i, message in enumerate(summarize_candidates)
+            if i not in protected_indices
+        ]
+        kept_tail = [*protected_messages, *kept_tail]
         if not to_summarize:
             return
 
@@ -277,6 +286,29 @@ class BaseAgent:
             break
 
         return non_system[boundary_index:]
+
+    def _collect_unresolved_tool_indices(self, non_system: list[dict[str, Any]]) -> set[int]:
+        protected: set[int] = set()
+        index = 0
+        while index < len(non_system):
+            message = non_system[index]
+            if not message.get("tool_calls"):
+                index += 1
+                continue
+
+            protected.add(index)
+            cursor = index + 1
+            consumed_tool_result = False
+            while cursor < len(non_system) and non_system[cursor].get("role") == "tool":
+                protected.add(cursor)
+                consumed_tool_result = True
+                cursor += 1
+
+            if not consumed_tool_result:
+                protected.add(index)
+            index = cursor if cursor > index else index + 1
+
+        return protected
 
     def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
         serialized = "\n".join(

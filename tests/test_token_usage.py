@@ -211,6 +211,27 @@ class TokenUsageTests(unittest.TestCase):
         self.assertTrue(expanded[0].get("tool_calls"))
         self.assertEqual(expanded[1].get("role"), "tool")
 
+    def test_collect_unresolved_tool_indices(self) -> None:
+        from ollamanauts.agent import BaseAgent
+        from ollamanauts.tool_orchestrator import ToolOrchestrator
+
+        agent = BaseAgent(
+            model="dummy",
+            orchestrator=ToolOrchestrator([]),
+            system_prompt="system",
+        )
+        non_system = [
+            {"role": "user", "content": "question"},
+            {"role": "assistant", "content": "", "tool_calls": [{"id": "a"}]},
+            {"role": "tool", "tool_name": "lookup", "content": "result"},
+            {"role": "assistant", "content": "", "tool_calls": [{"id": "b"}]},
+            {"role": "assistant", "content": "normal reply"},
+        ]
+
+        protected = agent._collect_unresolved_tool_indices(non_system)
+
+        self.assertEqual(protected, {1, 2, 3})
+
     def test_verbose_printer_token_budget_output(self) -> None:
         stream = io.StringIO()
         printer = VerbosePrinter(stream=stream)
