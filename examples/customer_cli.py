@@ -3,14 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 
-import ollama
-
 from ollamanauts import InteractiveAgent
-from ollamanauts import ToolOrchestrator
-from ollamanauts.terminal_output import finish_thinking
-from ollamanauts.terminal_output import print_help
-from ollamanauts.terminal_output import print_thinking_chunk
-from ollamanauts.terminal_output import print_tool_result
 
 from examples.customer_tools import explain_plan
 from examples.customer_tools import lookup_customer
@@ -37,54 +30,15 @@ def main() -> None:
     think_mode = None if args.think == "off" else args.think
     agent = InteractiveAgent(
         model=args.model,
-        orchestrator=ToolOrchestrator([lookup_customer, explain_plan]),
+        tools=[lookup_customer, explain_plan],
         think_mode=think_mode,
+        enable_subagents=False,
     )
 
     print("Customer support interactive agent")
     print(f"Model: {args.model}")
     print(f"Thinking: {args.think}")
-    print_help()
-
-    while True:
-        try:
-            user_input = input("\n> ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\nExiting.")
-            return
-
-        if not user_input:
-            continue
-
-        if user_input == "/exit":
-            print("Exiting.")
-            return
-        if user_input == "/help":
-            print_help()
-            continue
-        if user_input == "/tools":
-            for tool_name in agent.describe_tools():
-                print(f"- {tool_name}")
-            continue
-        if user_input == "/clear":
-            agent.reset()
-            print("Conversation cleared.")
-            continue
-
-        try:
-            reply = agent.run_turn(
-                user_input,
-                on_tool_result=print_tool_result,
-                on_thinking_chunk=print_thinking_chunk,
-                on_thinking_end=finish_thinking,
-            )
-            print(f"\n{reply}")
-        except ollama.ResponseError as exc:
-            finish_thinking()
-            print(f"\nOllama API error: {exc}")
-        except ollama.RequestError as exc:
-            finish_thinking()
-            print(f"\nConnection error: {exc}")
+    agent.interact()
 
 
 if __name__ == "__main__":

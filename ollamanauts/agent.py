@@ -350,9 +350,128 @@ class BaseAgent:
         return self.orchestrator.tool_names()
 
 
-@dataclass
-class InteractiveAgent(BaseAgent):
-    system_prompt: str = INTERACTIVE_AGENT_PROMPT
+class InteractiveAgent:
+    """Interactive convenience wrapper around :class:`Agent`.
+
+    This class keeps conversation state across multiple ``run`` calls and
+    provides an optional terminal input loop with slash-command handling.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: str = "gemma4:31b",
+        system_prompt: str | None = None,
+        extra_instructions: str | None = None,
+        think_mode: bool | str | None = "medium",
+        tools: Sequence[Callable[..., Any]] | None = None,
+        subagent_tools: Sequence[Callable[..., Any]] | None = None,
+        verbose: bool = False,
+        enable_subagents: bool = True,
+        max_context_tokens: int | None = None,
+        subagent_max_context_tokens: int | None = None,
+        enable_auto_compaction: bool = True,
+        compact_threshold: float = 0.85,
+        compact_target: float = 0.60,
+        compaction_preserve_last_n_turns: int = 4,
+        compaction_model: str | None = None,
+        subagent_enable_auto_compaction: bool | None = None,
+        subagent_compact_threshold: float | None = None,
+        subagent_compact_target: float | None = None,
+        subagent_compaction_preserve_last_n_turns: int | None = None,
+        subagent_compaction_model: str | None = None,
+    ) -> None:
+        effective_system_prompt = INTERACTIVE_AGENT_PROMPT if system_prompt is None else system_prompt
+        self._agent = Agent(
+            model=model,
+            system_prompt=effective_system_prompt,
+            extra_instructions=extra_instructions,
+            think_mode=think_mode,
+            tools=tools,
+            subagent_tools=subagent_tools,
+            verbose=verbose,
+            enable_subagents=enable_subagents,
+            max_context_tokens=max_context_tokens,
+            subagent_max_context_tokens=subagent_max_context_tokens,
+            enable_auto_compaction=enable_auto_compaction,
+            compact_threshold=compact_threshold,
+            compact_target=compact_target,
+            compaction_preserve_last_n_turns=compaction_preserve_last_n_turns,
+            compaction_model=compaction_model,
+            subagent_enable_auto_compaction=subagent_enable_auto_compaction,
+            subagent_compact_threshold=subagent_compact_threshold,
+            subagent_compact_target=subagent_compact_target,
+            subagent_compaction_preserve_last_n_turns=subagent_compaction_preserve_last_n_turns,
+            subagent_compaction_model=subagent_compaction_model,
+        )
+
+    def run(
+        self,
+        prompt: str,
+        *,
+        on_tool_result: Callable[[ToolResult], None] | None = None,
+        on_thinking_chunk: Callable[[str], None] | None = None,
+        on_thinking_end: Callable[[], None] | None = None,
+    ) -> str:
+        return self._agent.run(
+            prompt,
+            on_tool_result=on_tool_result,
+            on_thinking_chunk=on_thinking_chunk,
+            on_thinking_end=on_thinking_end,
+        )
+
+    def reset(self) -> None:
+        self._agent.reset()
+
+    def describe_tools(self) -> list[str]:
+        return self._agent.describe_tools()
+
+    def interact(self) -> None:
+        from .terminal_output import finish_thinking
+        from .terminal_output import print_help
+        from .terminal_output import print_thinking_chunk
+        from .terminal_output import print_tool_result
+
+        print_help()
+        while True:
+            try:
+                user_input = input("\n> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\nExiting.")
+                return
+
+            if not user_input:
+                continue
+
+            if user_input == "/exit":
+                print("Exiting.")
+                return
+            if user_input == "/help":
+                print_help()
+                continue
+            if user_input == "/tools":
+                for tool_name in self.describe_tools():
+                    print(f"- {tool_name}")
+                continue
+            if user_input == "/clear":
+                self.reset()
+                print("Conversation cleared.")
+                continue
+
+            try:
+                reply = self.run(
+                    user_input,
+                    on_tool_result=print_tool_result,
+                    on_thinking_chunk=print_thinking_chunk,
+                    on_thinking_end=finish_thinking,
+                )
+                print(f"\n{reply}")
+            except ollama.ResponseError as exc:
+                finish_thinking()
+                print(f"\nOllama API error: {exc}")
+            except ollama.RequestError as exc:
+                finish_thinking()
+                print(f"\nConnection error: {exc}")
 
 
 @dataclass
