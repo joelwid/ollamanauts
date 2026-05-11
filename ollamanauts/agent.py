@@ -382,6 +382,7 @@ class InteractiveAgent:
         subagent_compaction_model: str | None = None,
     ) -> None:
         effective_system_prompt = INTERACTIVE_AGENT_PROMPT if system_prompt is None else system_prompt
+        self._verbose = verbose
         self._agent = Agent(
             model=model,
             system_prompt=effective_system_prompt,
@@ -459,11 +460,14 @@ class InteractiveAgent:
                 continue
 
             try:
+                on_tool_result = None if self._verbose else print_tool_result
+                on_thinking_chunk = None if self._verbose else print_thinking_chunk
+                on_thinking_end = None if self._verbose else finish_thinking
                 reply = self.run(
                     user_input,
-                    on_tool_result=print_tool_result,
-                    on_thinking_chunk=print_thinking_chunk,
-                    on_thinking_end=finish_thinking,
+                    on_tool_result=on_tool_result,
+                    on_thinking_chunk=on_thinking_chunk,
+                    on_thinking_end=on_thinking_end,
                 )
                 print(f"\n{reply}")
             except ollama.ResponseError as exc:

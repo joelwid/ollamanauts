@@ -212,6 +212,48 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNone(kwargs["on_token_budget"])
         self.assertIsNone(kwargs["on_compaction_needed"])
 
+    def test_interactive_agent_interact_uses_terminal_callbacks_when_not_verbose(self) -> None:
+        from ollamanauts.agent import InteractiveAgent
+
+        with (
+            patch("ollamanauts.agent.Agent") as mock_agent_cls,
+            patch("builtins.input", side_effect=["hello", "/exit"]),
+            patch("ollamanauts.terminal_output.print_help"),
+            patch("ollamanauts.terminal_output.print_tool_result") as mock_print_tool_result,
+            patch("ollamanauts.terminal_output.print_thinking_chunk") as mock_print_thinking_chunk,
+            patch("ollamanauts.terminal_output.finish_thinking") as mock_finish_thinking,
+        ):
+            mock_agent = mock_agent_cls.return_value
+            mock_agent.run.return_value = "ok"
+            interactive = InteractiveAgent(verbose=False, enable_subagents=False)
+            interactive.interact()
+
+        run_kwargs = mock_agent.run.call_args.kwargs
+        self.assertIs(run_kwargs["on_tool_result"], mock_print_tool_result)
+        self.assertIs(run_kwargs["on_thinking_chunk"], mock_print_thinking_chunk)
+        self.assertIs(run_kwargs["on_thinking_end"], mock_finish_thinking)
+
+    def test_interactive_agent_interact_skips_terminal_callbacks_when_verbose(self) -> None:
+        from ollamanauts.agent import InteractiveAgent
+
+        with (
+            patch("ollamanauts.agent.Agent") as mock_agent_cls,
+            patch("builtins.input", side_effect=["hello", "/exit"]),
+            patch("ollamanauts.terminal_output.print_help"),
+            patch("ollamanauts.terminal_output.print_tool_result"),
+            patch("ollamanauts.terminal_output.print_thinking_chunk"),
+            patch("ollamanauts.terminal_output.finish_thinking"),
+        ):
+            mock_agent = mock_agent_cls.return_value
+            mock_agent.run.return_value = "ok"
+            interactive = InteractiveAgent(verbose=True, enable_subagents=False)
+            interactive.interact()
+
+        run_kwargs = mock_agent.run.call_args.kwargs
+        self.assertIsNone(run_kwargs["on_tool_result"])
+        self.assertIsNone(run_kwargs["on_thinking_chunk"])
+        self.assertIsNone(run_kwargs["on_thinking_end"])
+
 
 if __name__ == "__main__":
     unittest.main()
