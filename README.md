@@ -147,7 +147,7 @@ Interactive example:
 python -m examples.customer_cli --model gemma4:31b --think medium
 ```
 
-That example reuses the customer tools from `examples/customer_tools.py` and runs an `InteractiveAgent` with the same `/help`, `/tools`, `/clear`, and `/exit` commands as the built-in terminal interface.
+That example reuses the customer tools from `examples/customer_tools.py` and runs an `InteractiveAgent` with the same `/help`, `/tools`, `/clear`, `/compact`, and `/exit` commands as the built-in terminal interface.
 
 ## Public API
 
@@ -318,6 +318,7 @@ CLI commands:
 - `/help` shows command help
 - `/tools` lists registered tools
 - `/clear` resets conversation state
+- `/compact` triggers manual context compaction
 - `/exit` quits
 
 The CLI uses `InteractiveAgent` and prints tool activity plus thinking output through helpers in [ollamanauts/terminal_output.py](/Users/Joel/repos/ollamanauts/ollamanauts/terminal_output.py).

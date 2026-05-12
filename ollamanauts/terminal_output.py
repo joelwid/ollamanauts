@@ -7,8 +7,9 @@ def print_help() -> None:
     print("Commands:")
     print("  /help   Show available commands")
     print("  /tools  List registered tools")
-    print("  /clear  Reset conversation history")
-    print("  /exit   Quit the agent")
+    print("  /clear    Reset conversation history")
+    print("  /compact  Compact conversation history")
+    print("  /exit     Quit the agent")
 
 
 def print_tool_result(result: ToolResult) -> None:
