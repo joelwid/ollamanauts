@@ -4,6 +4,8 @@ from collections.abc import Callable
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from importlib.resources import files
+import random
+import string
 from typing import Any
 from typing import TypeVar
 
@@ -24,6 +26,11 @@ SUBAGENT_PROMPT = load_prompt("subagent.md")
 
 
 T = TypeVar("T")
+
+
+def _random_suffix(length: int = 4) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(random.choices(alphabet, k=length))
 
 
 def _compose_system_prompt(
@@ -423,7 +430,9 @@ class InteractiveAgent:
         subagent_compact_target: float | None = None,
         subagent_compaction_preserve_last_n_turns: int | None = None,
         subagent_compaction_model: str | None = None,
+        name: str | None = None,
     ) -> None:
+        self.name = name or f"IA-{_random_suffix()}"
         effective_system_prompt = INTERACTIVE_AGENT_PROMPT if system_prompt is None else system_prompt
         self._verbose = verbose
         self._agent = Agent(
@@ -447,6 +456,7 @@ class InteractiveAgent:
             subagent_compact_target=subagent_compact_target,
             subagent_compaction_preserve_last_n_turns=subagent_compaction_preserve_last_n_turns,
             subagent_compaction_model=subagent_compaction_model,
+            name=self.name,
         )
 
     def run(
@@ -529,6 +539,7 @@ class InteractiveAgent:
 class SubAgent(BaseAgent):
     """Specialized :class:`BaseAgent` that runs focused one-shot subagent tasks."""
     system_prompt: str = SUBAGENT_PROMPT
+    name: str = field(default_factory=lambda: f"SA-{_random_suffix()}")
 
     def run(
         self,
@@ -608,12 +619,16 @@ class Agent:
         subagent_compact_target: float | None = None,
         subagent_compaction_preserve_last_n_turns: int | None = None,
         subagent_compaction_model: str | None = None,
+        name: str | None = None,
     ) -> None:
         from .tools import DEFAULT_TOOLS
         from .tools import make_deploy_subagent_tool
         from .verbose_output import VerbosePrinter
 
-        self._verbose_printer: VerbosePrinter | None = VerbosePrinter() if verbose else None
+        self.name = name or f"A-{_random_suffix()}"
+        self._verbose_printer: VerbosePrinter | None = (
+            VerbosePrinter(agent_name=self.name) if verbose else None
+        )
         base_tools = [*DEFAULT_TOOLS, *(tools or ())]
         configured_subagent_tools = [*base_tools] if subagent_tools is None else [*subagent_tools]
         configured_tools = [*base_tools]

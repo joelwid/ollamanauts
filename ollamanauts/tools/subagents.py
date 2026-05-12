@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+import random
+import string
 from typing import Any
 
 from ..agent import SubAgent
@@ -9,6 +11,11 @@ from ..tool_orchestrator import ToolResult
 
 
 SUBAGENT_TOOLS: tuple[Callable[..., object], ...] = ()
+
+
+def _random_suffix(length: int = 4) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(random.choices(alphabet, k=length))
 
 
 def _filter_nested_subagent_tool(tools: Sequence[Callable[..., Any]]) -> list[Callable[..., Any]]:
@@ -33,14 +40,15 @@ def make_deploy_subagent_tool(
     compact_target: float = 0.60,
     compaction_preserve_last_n_turns: int = 4,
     compaction_model: str | None = None,
-) -> Callable[[str], str]:
+) -> Callable[[str, str | None], str]:
     filtered_tools = _filter_nested_subagent_tool(tools)
 
-    def deploy_subagent(task: str) -> str:
+    def deploy_subagent(task: str, name: str | None = None) -> str:
         """Deploy a non-interactive subagent for a focused task.
 
         Args:
             task: A clear, self-contained task for the subagent.
+            name: Optional subagent name. Defaults to "SA-XXXX".
 
         Returns:
             The subagent's concise result.
@@ -49,8 +57,9 @@ def make_deploy_subagent_tool(
         if not stripped_task:
             raise ValueError("task must not be empty")
 
+        effective_name = name or f"SA-{_random_suffix()}"
         if on_start is not None:
-            on_start(stripped_task)
+            on_start(effective_name)
 
         agent = SubAgent(
             model=model,
@@ -64,6 +73,7 @@ def make_deploy_subagent_tool(
             compact_target=compact_target,
             compaction_preserve_last_n_turns=compaction_preserve_last_n_turns,
             compaction_model=compaction_model,
+            name=effective_name,
         )
         try:
             result = agent.run(
