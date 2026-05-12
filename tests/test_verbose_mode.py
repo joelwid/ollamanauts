@@ -179,6 +179,16 @@ class VerboseModeTests(unittest.TestCase):
         self.assertEqual(sub_kwargs["compaction_preserve_last_n_turns"], 6)
         self.assertEqual(sub_kwargs["compaction_model"], "gemma4:27b")
 
+
+    def test_agent_compact_calls_base_compact_until_within_budget(self) -> None:
+        from ollamanauts import Agent
+
+        with patch("ollamanauts.agent.BaseAgent") as mock_base_agent:
+            agent = Agent(enable_subagents=False, verbose=False)
+            agent._compact()
+
+        mock_base_agent.return_value._compact_until_within_budget.assert_called_once()
+
     def test_verbose_false_keeps_callbacks_unset(self) -> None:
         from ollamanauts import Agent
 
@@ -232,6 +242,22 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIs(run_kwargs["on_tool_result"], mock_print_tool_result)
         self.assertIs(run_kwargs["on_thinking_chunk"], mock_print_thinking_chunk)
         self.assertIs(run_kwargs["on_thinking_end"], mock_finish_thinking)
+
+
+    def test_interactive_agent_compact_command_triggers_compaction(self) -> None:
+        from ollamanauts.agent import InteractiveAgent
+
+        with (
+            patch("ollamanauts.agent.Agent") as mock_agent_cls,
+            patch("builtins.input", side_effect=["/compact", "/exit"]),
+            patch("ollamanauts.terminal_output.print_help"),
+            patch("builtins.print") as mock_print,
+        ):
+            interactive = InteractiveAgent(verbose=False, enable_subagents=False)
+            interactive.interact()
+
+        mock_agent_cls.return_value._compact.assert_called_once()
+        mock_print.assert_any_call("Conversation compacted.")
 
     def test_interactive_agent_interact_skips_terminal_callbacks_when_verbose(self) -> None:
         from ollamanauts.agent import InteractiveAgent

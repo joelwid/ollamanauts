@@ -501,6 +501,10 @@ class InteractiveAgent:
                 self.reset()
                 print("Conversation cleared.")
                 continue
+            if user_input == "/compact":
+                self._agent._compact()
+                print("Conversation compacted.")
+                continue
 
             try:
                 on_tool_result = None if self._verbose else print_tool_result
@@ -748,3 +752,6 @@ class Agent:
 
     def describe_tools(self) -> list[str]:
         return self._agent.describe_tools()
+
+    def _compact(self) -> None:
+        self._agent._compact_until_within_budget()
