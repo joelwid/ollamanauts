@@ -74,6 +74,24 @@ def _fanout_done_callbacks(
 
 @dataclass
 class BaseAgent:
+    """Core stateful agent engine used by interactive and subagent wrappers.
+
+    Args:
+        model: Ollama model name used for generation and (by default) compaction.
+        orchestrator: Tool registry/executor used to expose callable tools.
+        think_mode: Thinking mode value forwarded to ``ollama.chat``.
+        system_prompt: System instruction stored as the first conversation message.
+        messages: Internal conversation message list; reset during initialization.
+        max_context_tokens: Optional context budget used to trigger compaction.
+        on_token_budget: Optional callback receiving estimated and max token counts.
+        on_compaction_needed: Optional callback invoked before each compaction pass.
+        enable_auto_compaction: Enables automatic context compaction when over budget.
+        compact_threshold: Fraction of max context that triggers compaction checks.
+        compact_target: Fraction of max context to target after compaction.
+        compaction_preserve_last_n_turns: Number of recent user/assistant turns to keep verbatim.
+        compaction_model: Optional model used for summarization during compaction.
+        max_compaction_passes: Maximum sequential compaction passes per turn.
+    """
     model: str
     orchestrator: ToolOrchestrator
     think_mode: bool | str | None = "medium"
@@ -355,6 +373,31 @@ class InteractiveAgent:
 
     This class keeps conversation state across multiple ``run`` calls and
     provides an optional terminal input loop with slash-command handling.
+
+    Args:
+        model: Ollama model name to use for chat completions.
+        system_prompt: Full replacement system prompt; overrides default prompt assembly.
+        extra_instructions: Extra instructions appended to the default system prompt when
+            ``system_prompt`` is not provided.
+        think_mode: Thinking mode passed through to Ollama.
+        tools: Additional top-level tools to register alongside package defaults.
+        subagent_tools: Explicit tool list for subagents; defaults to top-level tools.
+        verbose: Enables terminal runtime output for thinking/tool/subagent events.
+        enable_subagents: When true, register the ``deploy_subagent`` tool.
+        max_context_tokens: Optional token budget for the primary agent context.
+        subagent_max_context_tokens: Optional token budget for spawned subagents.
+        enable_auto_compaction: Enables automatic context compaction for the primary agent.
+        compact_threshold: Compaction trigger threshold for the primary agent.
+        compact_target: Post-compaction target threshold for the primary agent.
+        compaction_preserve_last_n_turns: Number of recent turns preserved for the
+            primary agent during compaction.
+        compaction_model: Optional summarization model for primary agent compaction.
+        subagent_enable_auto_compaction: Optional override for subagent auto-compaction.
+        subagent_compact_threshold: Optional override for subagent compaction trigger.
+        subagent_compact_target: Optional override for subagent compaction target.
+        subagent_compaction_preserve_last_n_turns: Optional override for how many
+            recent subagent turns are preserved during compaction.
+        subagent_compaction_model: Optional override summarization model for subagents.
     """
 
     def __init__(
@@ -480,6 +523,7 @@ class InteractiveAgent:
 
 @dataclass
 class SubAgent(BaseAgent):
+    """Specialized :class:`BaseAgent` that runs focused one-shot subagent tasks."""
     system_prompt: str = SUBAGENT_PROMPT
 
     def run(
@@ -505,14 +549,36 @@ class Agent:
         system_prompt: Full replacement system prompt. When provided, it replaces
             the agent's entire default system prompt instead of appending to it.
         extra_instructions: Additional instructions appended to the default
-            system prompt. Ignored when `system_prompt` is provided.
+            system prompt. Ignored when ``system_prompt`` is provided.
         think_mode: Thinking mode passed through to Ollama.
         tools: Explicit user-supplied tools to register.
         subagent_tools: Optional explicit tools made available to subagents.
             Defaults to the same non-subagent tools available to this agent.
         verbose: Enables terminal runtime output for thinking/tool/subagent events.
-        enable_subagents: When true, register only the `deploy_subagent` tool in
-            addition to any explicit `tools`.
+        enable_subagents: When true, register only the ``deploy_subagent`` tool in
+            addition to any explicit ``tools``.
+        max_context_tokens: Optional token budget for primary-agent context.
+        subagent_max_context_tokens: Optional token budget for subagent context.
+            When omitted, subagents inherit ``max_context_tokens``.
+        enable_auto_compaction: Enables automatic context compaction for the
+            primary agent.
+        compact_threshold: Fraction of max context that triggers compaction for
+            the primary agent.
+        compact_target: Fraction of max context to target after primary-agent
+            compaction.
+        compaction_preserve_last_n_turns: Number of recent turns kept verbatim
+            during primary-agent compaction.
+        compaction_model: Optional model used for primary-agent summarization.
+        subagent_enable_auto_compaction: Optional override for whether spawned
+            subagents auto-compact context.
+        subagent_compact_threshold: Optional override trigger threshold for
+            subagent compaction.
+        subagent_compact_target: Optional override post-compaction target for
+            subagents.
+        subagent_compaction_preserve_last_n_turns: Optional override for how many
+            recent subagent turns are kept verbatim during compaction.
+        subagent_compaction_model: Optional override summarization model for
+            subagent compaction.
     """
 
     def __init__(
