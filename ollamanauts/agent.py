@@ -432,7 +432,7 @@ class InteractiveAgent:
         subagent_compaction_model: str | None = None,
         name: str | None = None,
     ) -> None:
-        self.name = name or f"IA-{_random_suffix()}"
+        effective_name = name or f"IA-{_random_suffix()}"
         effective_system_prompt = INTERACTIVE_AGENT_PROMPT if system_prompt is None else system_prompt
         self._verbose = verbose
         self._agent = Agent(
@@ -456,8 +456,9 @@ class InteractiveAgent:
             subagent_compact_target=subagent_compact_target,
             subagent_compaction_preserve_last_n_turns=subagent_compaction_preserve_last_n_turns,
             subagent_compaction_model=subagent_compaction_model,
-            name=self.name,
+            name=effective_name,
         )
+        self.name = self._agent.name
 
     def run(
         self,
