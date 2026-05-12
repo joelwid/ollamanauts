@@ -92,6 +92,26 @@ class VerboseModeTests(unittest.TestCase):
         self.assertIsNotNone(kwargs["on_token_budget"])
         self.assertIsNotNone(kwargs["on_compaction_needed"])
 
+    def test_agent_and_interactive_names_default_prefixes(self) -> None:
+        from ollamanauts import Agent
+        from ollamanauts.agent import InteractiveAgent
+
+        agent = Agent(enable_subagents=False, verbose=False)
+        interactive = InteractiveAgent(enable_subagents=False, verbose=False)
+        self.assertRegex(agent.name, r"^A-[A-Z0-9]{4}$")
+        self.assertRegex(interactive.name, r"^IA-[A-Z0-9]{4}$")
+
+    def test_subagent_name_forwarded_to_deploy_tool(self) -> None:
+        from ollamanauts.tools.subagents import make_deploy_subagent_tool
+
+        with patch("ollamanauts.tools.subagents.SubAgent") as mock_subagent:
+            mock_subagent.return_value.run.return_value = "done"
+            deploy_subagent = make_deploy_subagent_tool(model="gemma4:31b", think_mode="medium")
+            deploy_subagent("Task", "SA-TEST")
+
+        _, kwargs = mock_subagent.call_args
+        self.assertEqual(kwargs["name"], "SA-TEST")
+
 
     def test_subagent_tools_default_to_agent_tools(self) -> None:
         from ollamanauts import Agent
