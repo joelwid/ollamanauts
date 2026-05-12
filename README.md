@@ -83,9 +83,9 @@ print(agent.run("Introduce yourself and describe your capabilities."))
 
 Concrete examples live in:
 
-- [examples/customer_agent.py](/Users/Joel/repos/ollamanauts/examples/customer_agent.py)
-- [examples/customer_cli.py](/Users/Joel/repos/ollamanauts/examples/customer_cli.py)
-- [examples/customer_tools.py](/Users/Joel/repos/ollamanauts/examples/customer_tools.py)
+- examples/customer_agent.py
+- examples/customer_cli.py
+- examples/customer_tools.py
 
 Together they show how to:
 
@@ -321,16 +321,16 @@ CLI commands:
 - `/compact` triggers manual context compaction
 - `/exit` quits
 
-The CLI uses `InteractiveAgent` and prints tool activity plus thinking output through helpers in [ollamanauts/terminal_output.py](/Users/Joel/repos/ollamanauts/ollamanauts/terminal_output.py).
+The CLI uses `InteractiveAgent` and prints tool activity plus thinking output through helpers in ollamanauts/terminal_output.py.
 
-If you want interactive mode with your own tools, see [examples/customer_cli.py](/Users/Joel/repos/ollamanauts/examples/customer_cli.py). The built-in `ollamanauts` CLI does not currently load external tools from imports or config.
+If you want interactive mode with your own tools, see examples/customer_cli.py. The built-in `ollamanauts` CLI does not currently load external tools from imports or config.
 
 ## Prompt Behavior
 
 Prompt files are loaded from package resources in:
 
-- [ollamanauts/prompts/interactive_agent.md](/Users/Joel/repos/ollamanauts/ollamanauts/prompts/interactive_agent.md)
-- [ollamanauts/prompts/subagent.md](/Users/Joel/repos/ollamanauts/ollamanauts/prompts/subagent.md)
+- ollamanauts/prompts/interactive_agent.md
+- ollamanauts/prompts/subagent.md
 
 Prompt composition works like this:
 
